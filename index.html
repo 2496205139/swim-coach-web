@@ -1888,7 +1888,7 @@ function openDatePicker(ctx) {
   const curD = parseInt(parts[2]);
   const nowY = parseInt(today().slice(0,4));
   drumPicker.open('选择签到日期', [
-    _makeYears(curY, nowY - 3, nowY + 1),
+    _makeYears(curY, nowY - 10, nowY + 5),
     _makeMonths(curM),
     _makeDays(curD, curY, curM)
   ], ([yStr, mStr, dStr]) => {
@@ -1918,7 +1918,7 @@ function openMonthPicker(ctx, anchorEl) {
   const anchorRect = anchorEl ? (anchorEl.getBoundingClientRect ? anchorEl.getBoundingClientRect() : anchorEl) : null;
   const nowY = parseInt(today().slice(0,4));
   drumPicker.open('选择月份', [
-    _makeYears(curY, nowY - 5, nowY + 2),
+    _makeYears(curY, nowY - 10, nowY + 5),
     _makeMonths(curM)
   ], ([yStr, mStr]) => {
     const y = parseInt(yStr);
@@ -1942,7 +1942,7 @@ function openYearPicker(ctx) {
   const curY = totalIncomeYear;
   const nowY = parseInt(today().slice(0,4));
   drumPicker.open('选择年份', [
-    _makeYears(curY, nowY - 5, nowY + 2)
+    _makeYears(curY, nowY - 10, nowY + 5)
   ], ([yStr]) => {
     totalIncomeYear = parseInt(yStr);
     renderTotalIncomeDetail();
@@ -3582,7 +3582,7 @@ function initIncomeDetailYearSelect() {
   const yearSelect = document.getElementById('incomeDetailYear');
   const currentYear = new Date().getFullYear();
   const years = [];
-  for (let y = currentYear; y >= currentYear - 5; y--) {
+  for (let y = currentYear + 5; y >= currentYear - 10; y--) {
     years.push(y);
   }
   yearSelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
@@ -6857,7 +6857,7 @@ function openRecordDatePicker() {
   if (recordMode === 'day') {
     // 日选择器：年+月+日
     drumPicker.open('选择日期', [
-      _makeYears(recordYear, recordYear - 2, recordYear + 1),
+      _makeYears(recordYear, recordYear - 10, recordYear + 5),
       _makeMonths(recordMonth),
       _makeDays(recordDay, recordYear, recordMonth)
     ], ([yStr, mStr, dStr]) => {
