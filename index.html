@@ -1,0 +1,4056 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>游泳教练课时管理系统 v2.0</title>
+  <!-- 本地依赖库 -->
+  <script src="libs/tailwind.min.js"></script>
+  <script src="libs/vue.global.prod.js"></script>
+  <script src="libs/supabase.js"></script>
+
+  <style>
+    /* ===== 旧系统风格 CSS 变量 ===== */
+    :root {
+      --primary: #0ea5e9; --primary-dark: #0284c7; --primary-light: #e0f2fe;
+      --secondary: #06b6d4; --success: #10b981; --warning: #f59e0b;
+      --danger: #ef4444; --purple: #8b5cf6;
+      --bg: #f0f9ff; --card: #ffffff; --text: #1e293b;
+      --text-muted: #64748b; --border: #e2e8f0;
+      --radius: 12px; --shadow: 0 2px 12px rgba(14,165,233,0.08);
+    }
+    * { box-sizing: border-box; margin:0; padding:0; }
+    body { font-family: 'PingFang SC','Microsoft YaHei',-apple-system,BlinkMacSystemFont,sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 16px; }
+
+    /* 页面切换动画 */
+    .fade-enter-active, .fade-leave-active { transition: opacity .15s ease; }
+    .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+    /* 滚动条 */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #c5c9d0; border-radius: 3px; }
+
+    /* ===== 顶部 Header ===== */
+    .header { background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 50%, #0891b2 100%); color: #fff; padding: 0; box-shadow: 0 2px 16px rgba(14,165,233,0.3); }
+    .header-inner { max-width: 1200px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .header-title { display: flex; align-items: center; gap: 14px; }
+    .header-icon { width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+    .header h1 { font-size: 28px; font-weight: 700; letter-spacing: 1px; margin: 0; }
+    .header-date { font-size: 13px; opacity: 0.9; background: rgba(255,255,255,0.15); padding: 5px 13px; border-radius: 20px; white-space: nowrap; }
+    .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .header-email { font-size: 13px; opacity: 0.9; background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 16px; }
+    .btn-cloud { background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 5px 13px; border-radius: 20px; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+    .btn-cloud:hover { background: rgba(255,255,255,0.35); }
+
+    /* ===== 横向导航栏 ===== */
+    .nav { background: #fff; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
+    .nav-inner { max-width: 1200px; margin: 0 auto; display: flex; overflow-x: auto; }
+    .nav-btn { padding: 13px 18px; font-size: 14.5px; font-weight: 500; color: var(--text-muted); border: none; background: none; cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .nav-btn:hover { color: var(--primary); }
+    .nav-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ===== 主内容区 ===== */
+    .main { max-width: 1200px; margin: 0 auto; padding: 20px 16px; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* 卡片 */
+    .card { background: var(--card); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+    .card-title { font-size: 16.5px; font-weight: 600; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    /* 统计卡片 */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .stat-card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+    .stat-label { font-size: 13.5px; color: var(--text-muted); margin-bottom: 6px; }
+    .stat-value { font-size: 26px; font-weight: 700; }
+    .stat-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 4px; }
+    .stat-card.blue .stat-value { color: var(--primary); }
+    .stat-card.green .stat-value { color: var(--success); }
+    .stat-card.red .stat-value { color: var(--danger); }
+    .stat-card.yellow .stat-value { color: var(--warning); }
+    .stat-card.purple .stat-value { color: var(--purple); }
+    .stat-card.teal .stat-value { color: var(--secondary); }
+
+    /* 两列网格 */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: 1fr 1fr; } }
+
+    /* 按钮 */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; white-space: nowrap; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover { background: #059669; }
+    .btn-warning { background: var(--warning); color: white; }
+    .btn-warning:hover { background: #d97706; }
+    .btn-red { background: var(--danger); color: white; font-size: 11px; padding: 3px 8px; border-radius: 4px; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+    .btn-outline:hover { background: var(--bg); color: var(--text); }
+    .btn-sm { padding: 5px 11px; font-size: 13px; }
+
+    /* 输入框 */
+    input, select, textarea {
+      width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 14.5px; outline: none; transition: border-color 0.2s; color: var(--text); background: #fff;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14,165,233,0.12); }
+    label { display: block; font-size: 13.5px; font-weight: 500; color: var(--text-muted); margin-bottom: 5px; }
+
+    /* 表格 */
+    table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+    th { text-align: left; padding: 9px 12px; background: var(--bg); color: var(--text-muted); font-weight: 600; font-size: 13.5px; border-bottom: 2px solid var(--border); white-space: nowrap; }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg); }
+
+    /* 弹窗遮罩 */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+      animation: fadeIn .15s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+    .modal-sheet {
+      background: white; border-radius: 16px; width: 100%; max-width: 520px; max-height: 85vh;
+      overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between; padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-body { padding: 20px; }
+    .modal-footer {
+      display: flex; gap: 10px; justify-content: flex-end; padding: 12px 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* 徽章 */
+    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 12.5px; font-weight: 500; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-green { background: #dcfce7; color: #16a34a; }
+    .badge-yellow { background: #fef9c3; color: #ca8a04; }
+    .badge-red { background: #fee2e2; color: #dc2626; }
+    .badge-gray { background: var(--bg); color: var(--text-muted); }
+
+    /* 空状态 */
+    .empty-state { text-align: center; padding: 32px 16px; color: var(--text-muted); font-size: 14px; }
+
+    /* 表单行 */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
+
+    /* ===== 签到页面：按课程分组 ===== */
+    .signin-date-bar {
+      display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+      gap:10px;margin-bottom:16px;
+    }
+    .signin-date-bar .date-label { font-size:14px;font-weight:600;color:var(--text); }
+    .date-picker-btn {
+      display:inline-flex;align-items:center;gap:6px;padding:8px 16px;
+      background:#fff;border:1px solid var(--border);border-radius:8px;
+      font-size:14px;cursor:pointer;transition:all 0.2s;
+    }
+    .date-picker-btn:hover { border-color:var(--primary);color:var(--primary); }
+
+    /* 按月签到日历 */
+    .signin-month-header {
+      display:grid;grid-template-columns:repeat(7,1fr);gap:0;
+      margin-bottom:4px;
+    }
+    .signin-month-weekday {
+      text-align:center;font-size:13px;font-weight:600;color:var(--text-muted);
+      padding:8px 0;background:var(--bg);border-radius:4px;
+    }
+    .signin-month-grid {
+      display:grid;grid-template-columns:repeat(7,1fr);gap:4px;
+    }
+    .signin-month-cell {
+      aspect-ratio:1;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;border-radius:8px;cursor:pointer;
+      background:#f8fafc;transition:all 0.15s;position:relative;
+      min-height:56px;
+    }
+    .signin-month-cell:hover { background:#e0e7ff; }
+    .signin-month-cell-empty { background:transparent;cursor:default; }
+    .signin-month-cell-empty:hover { background:transparent; }
+    .signin-month-today {
+      background:#dbeafe;box-shadow:inset 0 0 0 2px #3b82f6;
+    }
+    .signin-month-has-record { background:#dcfce7; }
+    .signin-month-has-record.signin-month-today { background:#dbeafe;box-shadow:inset 0 0 0 2px #3b82f6; }
+    .signin-month-day { font-size:15px;font-weight:700;color:#374151; }
+    .signin-month-count {
+      font-size:11px;font-weight:600;color:#16a34a;margin-top:2px;
+      background:#bbf7d0;padding:0 5px;border-radius:8px;
+    }
+
+    .course-grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    @media (max-width: 768px) { .course-grid { grid-template-columns: 1fr; } }
+
+    .course-signin-card {
+      background:var(--card);border-radius:var(--radius);
+      box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;
+    }
+    .course-card-header {
+      display:flex;align-items:center;gap:10px;padding:14px 16px;
+      border-bottom:1px solid var(--border);
+    }
+    .course-dot {
+      width:12px;height:12px;border-radius:50%;flex-shrink:0;
+    }
+    .course-card-title { font-size:15.5px;font-weight:600;flex:1; }
+    .course-card-count { font-size:12.5px;color:var(--text-muted);background:var(--bg);padding:3px 10px;border-radius:12px; }
+
+    .student-signin-list { padding:8px 12px; }
+    .student-signin-item {
+      display:flex;align-items:center;gap:10px;padding:9px 8px;
+      border-radius:8px;transition:background 0.15s;
+    }
+    .student-signin-item:hover { background:var(--bg); }
+    .student-signin-item .avatar {
+      width:36px;height:36px;border-radius:50%;background:var(--primary-light);
+      display:flex;align-items:center;justify-content:center;
+      font-size:15px;font-weight:700;color:var(--primary);flex-shrink:0;
+    }
+    .student-signin-item .info { flex:1;min-width:0; }
+    .student-signin-item .name { font-weight:600;font-size:14.5px; }
+    .student-signin-item .meta { font-size:12px;color:var(--text-muted);margin-top:1px; }
+    .student-signin-item .action { flex-shrink:0; }
+
+    .signin-done-tag {
+      display:inline-flex;align-items:center;gap:4px;
+      padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;
+      background:#dcfce7;color:#16a34a;
+    }
+
+    .makeup-bar {
+      background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;
+      padding:8px 14px;margin-bottom:14px;font-size:13px;color:#c2410c;
+      display:flex;align-items:center;gap:6px;
+    }
+
+    /* 统计卡片 */
+    .stat-card { background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .stat-value { font-size: 26px; font-weight: 700; line-height: 1.2; }
+    .stat-label { font-size: 13px; color: #6b7280; margin-top: 4px; }
+
+    /* 空状态 */
+    .empty-state { text-align: center; padding: 48px 20px; color: #9ca3af; }
+    .empty-state svg { width: 64px; height: 64px; margin-bottom: 12px; opacity: .4; }
+    .empty-state p { font-size: 14px; margin: 0; }
+
+    /* Toast 提示 */
+    .toast-container { position: fixed; top: 16px; right: 16px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 500;
+      animation: slideInRight .25s ease; display: flex; align-items: center; gap: 8px;
+    }
+    @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast-success { background: #dcfce7; color: #166534; }
+    .toast-error { background: #fee2e2; color: #991b1b; }
+    .toast-info { background: #dbeafe; color: #1e40af; }
+
+    /* 加载状态 */
+    .spinner { width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: #2563eb; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 日历网格 */
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+    .cal-cell { padding: 8px 4px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: background .1s; }
+    .cal-cell:hover { background: #f3f4f6; }
+    .cal-cell.today { background: #eff6ff; font-weight: 700; color: #2563eb; }
+    .cal-cell.selected { background: #2563eb; color: white; }
+    .cal-cell.has-record::after {
+      content: ''; display: block; width: 5px; height: 5px; border-radius: 50%; background: #2563eb;
+      margin: 2px auto 0;
+    }
+    .cal-cell.selected.has-record::after { background: white; }
+
+    /* 颜色圆点 */
+    .color-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; vertical-align: middle; }
+    /* 签到课程卡片网格 */
+    .signin-course-grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px; }
+    @media (max-width: 900px) { .signin-course-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .signin-course-grid { grid-template-columns: 1fr; } }
+    .signin-course-card {
+      background:var(--card);border-radius:var(--radius);
+      box-shadow:var(--shadow);border:1px solid var(--border);
+      padding:20px;cursor:pointer;transition:all 0.2s;
+      display:flex;align-items:center;gap:14px;
+    }
+    .signin-course-card:hover { border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 12px rgba(14,165,233,0.13); }
+    .signin-card-icon { font-size:28px;width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+    .signin-card-body { flex:1;min-width:0; }
+    .signin-card-name { font-size:15px;font-weight:700;color:var(--text); }
+    .signin-card-count { font-size:12.5px;color:var(--text-muted);margin-top:2px; }
+    .signin-card-arrow { font-size:12.5px;color:var(--primary);font-weight:600;white-space:nowrap; }
+
+    /* 弹窗遮罩 */
+    .signin-modal-overlay {
+      position:fixed;top:0;left:0;width:100%;height:100%;
+      background:rgba(0,0,0,0.45);z-index:1000;
+      display:flex;align-items:center;justify-content:center;
+      padding:20px;box-sizing:border-box;
+    }
+    /* 弹窗主体 */
+    .signin-modal {
+      background:#fff;border-radius:16px;width:760px;max-width:95vw;
+      max-height:90vh;display:flex;flex-direction:column;
+      box-shadow:0 20px 60px rgba(0,0,0,0.25);
+      overflow:hidden;
+    }
+    .signin-modal-header {
+      background:var(--primary);color:#fff;
+      padding:14px 20px;display:flex;align-items:center;justify-content:space-between;
+      border-radius:16px 16px 0 0;flex-shrink:0;
+    }
+    .signin-modal-close {
+      background:rgba(255,255,255,0.2);border:none;color:#fff;
+      width:32px;height:32px;border-radius:50%;font-size:18px;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      transition:background 0.15s;
+    }
+    .signin-modal-close:hover { background:rgba(255,255,255,0.35); }
+
+    /* 搜索框 */
+    .signin-search-bar {
+      position:relative;padding:10px 20px;
+      border-bottom:1px solid var(--border);
+    }
+    .signin-search-icon { position:absolute;left:32px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--text-muted); }
+    .signin-search-input {
+      width:100%;padding:9px 12px 9px 36px;
+      border:2px solid var(--primary);border-radius:10px;
+      font-size:14px;outline:none;background:var(--bg);
+      transition:border-color 0.2s;
+    }
+    .signin-search-input:focus { border-color:var(--primary-dark); }
+    .signin-search-clear {
+      position:absolute;right:32px;top:50%;transform:translateY(-50%);
+      background:none;border:none;color:var(--text-muted);cursor:pointer;
+      font-size:14px;padding:2px 6px;
+    }
+
+    /* 工具栏 */
+    .signin-toolbar {
+      display:flex;align-items:center;justify-content:space-between;
+      padding:8px 20px;font-size:12.5px;color:var(--text-muted);
+      border-bottom:1px solid var(--border);background:var(--bg);
+    }
+    .signin-checkbox-label {
+      display:flex;align-items:center;gap:6px;cursor:pointer;
+      font-size:13px;color:var(--primary);font-weight:600;
+    }
+    .signin-checkbox-label input[type="checkbox"] { accent-color:var(--primary);width:16px;height:16px; }
+
+    /* 学员列表 */
+    .signin-student-list {
+      flex:1;overflow-y:auto;padding:8px 20px;
+      max-height:340px;
+    }
+    .signin-student-row {
+      display:flex;align-items:center;gap:10px;
+      padding:9px 10px;border-radius:8px;cursor:pointer;
+      transition:background 0.15s;border:1px solid transparent;
+    }
+    .signin-student-row:hover { background:var(--bg); }
+    .signin-student-row.selected { background:#eff6ff;border-color:#bfdbfe; }
+    .signin-checkbox { flex-shrink:0; }
+    .checkbox-box {
+      width:18px;height:18px;border-radius:4px;
+      border:2px solid var(--border);display:flex;align-items:center;justify-content:center;
+      font-size:12px;color:#fff;transition:all 0.15s;
+    }
+    .checkbox-box.checked { background:var(--primary);border-color:var(--primary); }
+    .signin-stu-info { flex:1;min-width:0; }
+    .signin-stu-name { font-size:13.5px;font-weight:600;color:var(--text); }
+    .signin-stu-phone { font-size:11.5px;color:var(--text-muted);margin-top:1px; }
+    .signin-stu-badges { display:flex;gap:5px;flex-shrink:0; }
+    .signin-badge-remaining {
+      font-size:11px;padding:2px 8px;border-radius:10px;
+      background:#fef3c7;color:#92400e;font-weight:600;
+    }
+    .signin-badge-unenrolled {
+      font-size:11px;padding:2px 8px;border-radius:10px;
+      background:#f3f4f6;color:#6b7280;font-weight:600;
+    }
+    .signin-badge-count {
+      font-size:11px;padding:2px 8px;border-radius:10px;
+      background:#dbeafe;color:#1e40af;font-weight:600;
+    }
+    .btn-xs { padding:4px 10px;font-size:11.5px;border-radius:6px; }
+
+    /* 弹窗底部 */
+    .signin-modal-footer {
+      display:flex;justify-content:flex-end;gap:10px;
+      padding:14px 20px;border-top:1px solid var(--border);
+      background:var(--bg);border-radius:0 0 16px 16px;flex-shrink:0;
+    }
+    .signin-empty { text-align:center;padding:24px 0;color:var(--text-muted);font-size:13px; }
+
+  </style>
+</head>
+
+<body>
+<div id="app">
+  <!-- Toast 提示容器 -->
+  <div class="toast-container">
+    <div v-for="(t,i) in toasts" :key="t.id"
+         :class="'toast toast-'+t.type"
+         style="animation:slideInRight .25s ease"
+         @click="removeToast(i)">
+      {{ t.msg }}
+    </div>
+  </div>
+
+  <!-- ========== 登录/注册页 ========== -->
+  <div v-if="!authState.loggedIn && !authState.showRegister" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+    <div class="card w-full max-w-md">
+      <h1 class="text-2xl font-bold text-center mb-1">🏊 游泳教练课时管理系统</h1>
+      <p class="text-center text-sm text-gray-500 mb-6">v2.0 — 干净 · 稳定 · 专业</p>
+
+      <div class="space-y-4">
+        <div>
+          <label>邮箱</label>
+          <input type="email" v-model="authForm.email" placeholder="your@email.com" @keyup.enter="handleLogin" />
+        </div>
+        <div>
+          <label>密码</label>
+          <input type="password" v-model="authForm.password" placeholder="输入密码" @keyup.enter="handleLogin" />
+        </div>
+        <button class="btn btn-primary w-full py-3" :disabled="authLoading" @click="handleLogin">
+          <span v-if="authLoading" class="spinner mr-2"></span> 登录
+        </button>
+      </div>
+
+      <p class="text-center mt-6 text-sm text-gray-500">
+        还没有账号？
+        <a href="#" class="text-blue-600 hover:underline" @click.prevent="authState.showRegister=true">注册新账号</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- 注册页 -->
+  <div v-if="!authState.loggedIn && authState.showRegister" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+    <div class="card w-full max-w-md">
+      <h1 class="text-xl font-bold mb-4">📝 注册账号</h1>
+      <div class="space-y-4">
+        <div>
+          <label>邮箱</label>
+          <input type="email" v-model="regForm.email" placeholder="your@email.com" />
+        </div>
+        <div>
+          <label>密码（至少6位）</label>
+          <input type="password" v-model="regForm.password" placeholder="设置密码" />
+        </div>
+        <button class="btn btn-primary w-full py-3" :disabled="authLoading" @click="handleRegister">
+          <span v-if="authLoading" class="spinner mr-2"></span> 注册
+        </button>
+      </div>
+      <p class="text-center mt-4 text-sm">
+        已有账号？<a href="#" class="text-blue-600 hover:underline" @click.prevent="authState.showRegister=false">去登录</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- ========== 主界面 ========== -->
+  <div v-if="authState.loggedIn">
+    <!-- 顶部 Header -->
+    <div class="header">
+      <div class="header-inner">
+        <div class="header-title">
+          <div class="header-icon">🏊</div>
+          <h1>教练学生管理系统</h1>
+        </div>
+        <div class="header-actions">
+          <span class="header-email">{{ authState.user?.email }}</span>
+          <button class="btn-cloud" @click="syncData" :title="syncing?'同步中...':'云端已保存'">{{ syncing?'⏳ 同步中...':'☁️ 云同步' }}</button>
+          <button class="btn-cloud" @click="handleLogout" title="登出">🚪 登出</button>
+          <div class="header-date">{{ headerDate }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 横向导航栏 -->
+    <nav class="nav">
+      <div class="nav-inner">
+        <button v-for="m in menuItems" :key="m.id"
+                :class="['nav-btn', currentPage===m.id?'active':'']"
+                @click="currentPage=m.id">
+          {{ m.icon }} {{ m.name }}
+        </button>
+      </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <div class="main">
+
+      <!-- ===== 仪表盘 ===== -->
+      <div v-if="currentPage==='dashboard'" class="page active">
+        <!-- 6个统计卡片 -->
+        <div class="stats-grid">
+          <div class="stat-card blue">
+            <div class="stat-label">👥 学生总数</div>
+            <div class="stat-value">{{ dashStats.totalStudents }}</div>
+            <div class="stat-sub">已注册学生</div>
+          </div>
+          <div class="stat-card teal">
+            <div class="stat-label">✅ 今日签到</div>
+            <div class="stat-value">{{ dashStats.todaySignins }}</div>
+            <div class="stat-sub">{{ todayStr }}</div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-label">📚 累计课时</div>
+            <div class="stat-value">{{ dashStats.totalLessons }}</div>
+            <div class="stat-sub">点击查看详情 →</div>
+          </div>
+          <div class="stat-card yellow" style="cursor:pointer" @click="currentPage='monthly'">
+            <div class="stat-label">💰 累计课时费收入</div>
+            <div class="stat-value">¥{{ (dashStats.yearCoachIncome || 0).toLocaleString() }}</div>
+            <div class="stat-sub">{{ currentYear }}年累计 点击查看月度详情 →</div>
+          </div>
+          <div class="stat-card purple" style="cursor:pointer" @click="currentPage='monthly'">
+            <div class="stat-label">📊 年度耗课统计</div>
+            <div class="stat-value">¥{{ dashStats.yearConsume.toFixed(2) }}</div>
+            <div class="stat-sub">{{ currentYear }}年 点击查看明细 →</div>
+          </div>
+        </div>
+
+        <!-- 今日签到 + 本月出勤奖励 -->
+        <div class="grid-2" style="margin-bottom:18px;">
+          <div class="card">
+            <div class="card-title">🏊 今日签到情况</div>
+            <div v-if="todaySigninByCourse.length">
+              <div v-for="g in todaySigninByCourse" :key="g.courseName" style="margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:6px;padding:6px 0;font-weight:600;font-size:13px;color:var(--text-muted);">
+                  <span class="color-dot" :style="{background:g.courseColor}"></span>{{ g.courseName }}（{{ g.records.length }}人）
+                </div>
+                <div v-for="s in g.records" :key="s.id" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border-radius:6px;margin-bottom:4px;">
+                  <span style="font-size:16px;">🏊‍♂️</span>
+                  <span style="font-weight:600;font-size:14px;">{{ s.studentName }}</span>
+                  <span v-if="s.signin_type==='gift'" style="font-size:11px;color:#be185d;background:#fce7f3;padding:1px 5px;border-radius:3px;">赠课</span>
+                  <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">{{ s.time || '签到完成' }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-else style="text-align:center;padding:28px 12px;color:var(--text-muted);font-size:14px;">
+              <div style="font-size:40px;margin-bottom:8px;">📭</div>
+              <div>今日暂无签到记录</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+              <span>🏆 本月出勤奖励<span style="font-size:12px;color:var(--text-muted);font-weight:normal;margin-left:8px;">{{ monthAwardList.length }}人达标</span><a href="javascript:;" @click="currentPage='awards'" style="font-size:11px;color:var(--primary);margin-left:6px;text-decoration:none;">⚙ 设置</a></span>
+              <select v-model="awardQualifiedFilter" class="input input-sm" style="width:auto;padding:0.15rem 0.4rem;font-size:11px;">
+                <option value="all">全部课程</option>
+                <option v-for="opt in awardCourseOptions" :key="opt.id" :value="opt.id">{{ opt.name }}</option>
+              </select>
+            </div>
+            <div v-if="filteredAwardList.length">
+              <div v-for="(a,ai) in filteredAwardList" :key="ai"
+                   style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">
+                <span style="font-size:16px;">{{ ai === 0 ? '🥇' : ai === 1 ? '🥈' : ai === 2 ? '🥉' : '🏅' }}</span>
+                <span style="font-weight:600;font-size:13px;flex:1;">{{ a.studentName }}</span>
+                <span class="badge badge-blue text-xs">{{ a.courseName }}</span>
+                <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">{{ a.count }}次</span>
+                <span style="font-size:13px;color:#059669;font-weight:600;white-space:nowrap;">+{{ a.reward }}元</span>
+              </div>
+              <div style="text-align:center;padding:6px 0 2px;">
+                <a href="javascript:;" @click="currentPage='awards'" style="font-size:12px;color:var(--primary);">查看出勤奖励详情 →</a>
+              </div>
+            </div>
+            <div v-else style="text-align:center;padding:20px 12px;color:var(--text-muted);font-size:13px;">
+              <div style="font-size:36px;margin-bottom:4px;">🎯</div>
+              <div>{{ awardQualifiedFilter === 'all' ? '本月暂无学员达到奖励标准' : '该课程筛选后无达标学员' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 本月各课程出勤统计 -->
+        <div class="card">
+          <div class="card-title">📈 本月各课程出勤统计</div>
+          <table v-if="dashCourseStats.length">
+            <thead><tr><th>课程</th><th style="text-align:right;">签到次数</th></tr></thead>
+            <tbody>
+              <tr v-for="cs in dashCourseStats" :key="cs.name">
+                <td>{{ cs.name }}</td>
+                <td style="text-align:right;"><span :style="{color:cs.color,fontWeight:600}">{{ cs.count }}次</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state">暂无数据</div>
+        </div>
+      </div>
+
+      <!-- ===== 签到：课程卡片 + 学员弹窗 ===== -->
+      <div v-if="currentPage==='signin'">
+        <!-- 日期栏 -->
+        <div class="signin-date-bar">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="date-label">✅ {{ signinDate===today()?'今日签到':'补签模式' }}</span>
+            <button class="date-picker-btn" @click="showSigninDatePicker=!showSigninDatePicker">
+              📅 {{ signinDateLabel }}
+            </button>
+            <button v-if="signinDate!==today()" class="btn btn-outline btn-sm" @click="signinDate=today()">回到今天</button>
+          </div>
+          <span style="font-size:13px;color:var(--text-muted);">
+            已签到 <b style="color:var(--success);">{{ todaySigninList.length }}</b> 人
+          </span>
+        </div>
+
+        <!-- 非今天提示 -->
+        <div v-if="signinDate!==today()" class="makeup-bar">
+          ⚠️ 当前为 <strong>{{ signinDateLabel }}</strong> 的补签模式，签到记录将保存到该日期
+        </div>
+
+        <!-- 日期选择器弹出 -->
+        <div v-if="showSigninDatePicker" class="card" style="margin-bottom:16px;padding:12px;">
+          <input type="date" v-model="signinDate" @change="showSigninDatePicker=false"
+                 style="max-width:200px;" />
+        </div>
+
+        <!-- ===== 按日视图：课程卡片 + 签到 ===== -->
+        <template v-if="signinViewMode==='day'">
+
+        <!-- 课程卡片网格 -->
+        <div v-if="signinCourseCards.length" class="signin-course-grid">
+          <div v-for="cc in signinCourseCards" :key="cc.courseId"
+               class="signin-course-card" @click="openSigninModal(cc)">
+            <div class="signin-card-icon" :style="{background:cc.color+'18',color:cc.color}">{{ cc.icon }}</div>
+            <div class="signin-card-body">
+              <div class="signin-card-name">{{ cc.courseName }}</div>
+              <div class="signin-card-count">{{ cc.studentCount }}名学员</div>
+            </div>
+            <div class="signin-card-arrow">查看学员 →</div>
+          </div>
+        </div>
+
+        <!-- 无数据 -->
+        <div v-else class="card" style="text-align:center;padding:48px 20px;">
+          <div style="font-size:48px;margin-bottom:12px;">📭</div>
+          <p style="color:var(--text-muted);font-size:15px;">暂无课程数据，请先添加课程和学员报名</p>
+          <button class="btn btn-primary" @click="currentPage='courses'" style="margin-top:12px;">去添加课程</button>
+        </div>
+
+        <!-- 学员签到弹窗 -->
+        <div v-if="signinModalOpen" class="signin-modal-overlay" @click.self="closeSigninModal()">
+          <div class="signin-modal">
+            <!-- 弹窗标题 -->
+            <div class="signin-modal-header">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:20px;">{{ signinModalCourse?.icon }}</span>
+                <span style="font-size:15px;font-weight:700;color:#fff;">{{ signinModalCourse?.courseName }} — 学员签到</span>
+              </div>
+              <button class="signin-modal-close" @click="closeSigninModal()">✕</button>
+            </div>
+
+            <!-- 搜索框 -->
+            <div class="signin-search-bar">
+              <span class="signin-search-icon">🔍</span>
+              <input type="text" v-model="signinSearch" placeholder="搜索学员姓名..."
+                     class="signin-search-input" ref="signinSearchInput" />
+              <button v-if="signinSearch" class="signin-search-clear" @click="signinSearch=''">✕</button>
+            </div>
+
+            <!-- 搜索结果提示 + 全选 -->
+            <div class="signin-toolbar">
+              <label class="signin-checkbox-label">
+                <input type="checkbox" :checked="signinIsAllSelected" @change="signinToggleAll" />
+                <span>全选</span>
+              </label>
+              <span class="signin-result-count">
+                找到 <b>{{ signinModalStudents.length }}</b> 名学员（共 {{ signinModalTotal }} 名）
+              </span>
+            </div>
+
+            <!-- 学员列表 -->
+            <div class="signin-student-list">
+              <div v-for="stu in signinModalStudents" :key="stu.id"
+                   class="signin-student-row"
+                   :class="{'selected':signinIsSelected(stu.id)}">
+                <div class="signin-checkbox" @click="toggleSigninSelect(stu.id)">
+                  <div class="checkbox-box" :class="{'checked':signinIsSelected(stu.id)}">
+                    <span v-if="signinIsSelected(stu.id)">✓</span>
+                  </div>
+                </div>
+                <div class="signin-stu-info">
+                  <div class="signin-stu-name" v-html="highlightName(stu.name)"></div>
+                  <div class="signin-stu-phone">{{ stu.phone||'无电话' }}</div>
+                </div>
+                <div class="signin-stu-badges" style="flex-direction:column;align-items:flex-end;gap:4px;">
+                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <span class="signin-badge-remaining" v-if="stu.normalRemaining!==null&&stu.normalRemaining>0" style="background:#e0f2fe;color:#0284c7;">正{{ stu.normalRemaining }}节</span>
+                    <span class="signin-badge-remaining" v-if="stu.giftRemaining!==null&&stu.giftRemaining>0" style="background:#fce7f3;color:#be185d;">🎁{{ stu.giftRemaining }}节</span>
+                    <span v-if="stu.normalRemaining===0&&stu.giftRemaining===0" class="signin-badge-unenrolled">已用完</span>
+                    <span class="signin-badge-count">已签{{ stu.todayCount }}次</span>
+                  </div>
+                  <div v-if="stu.normalRemaining>0||stu.giftRemaining>0" style="display:flex;gap:4px;font-size:11px;" @click.stop>
+                    <label :style="{cursor:stu.normalRemaining>0?'pointer':'not-allowed',opacity:stu.normalRemaining>0?1:0.4,padding:'2px 6px',borderRadius:'4px',background:stu.selectedSigninType==='normal'?'#0ea5e9':'#f1f5f9',color:stu.selectedSigninType==='normal'?'#fff':'#64748b',border:'1px solid',borderColor:stu.selectedSigninType==='normal'?'#0ea5e9':'#e2e8f0'}">
+                      <input type="radio" :value="'normal'" @change="signinTypeSelections[stu.id]='normal'" :checked="signinTypeSelections[stu.id]==='normal'" :disabled="stu.normalRemaining<=0" style="display:none;" />
+                      正常
+                    </label>
+                    <label :style="{cursor:stu.giftRemaining>0?'pointer':'not-allowed',opacity:stu.giftRemaining>0?1:0.4,padding:'2px 6px',borderRadius:'4px',background:stu.selectedSigninType==='gift'?'#ec4899':'#f1f5f9',color:stu.selectedSigninType==='gift'?'#fff':'#64748b',border:'1px solid',borderColor:stu.selectedSigninType==='gift'?'#ec4899':'#e2e8f0'}">
+                      <input type="radio" :value="'gift'" @change="signinTypeSelections[stu.id]='gift'" :checked="signinTypeSelections[stu.id]==='gift'" :disabled="stu.giftRemaining<=0" style="display:none;" />
+                      🎁赠课
+                    </label>
+                  </div>
+                </div>
+                <button class="btn btn-primary btn-xs" @click.stop="quickSignin(stu)" style="flex-shrink:0;">
+                  签到
+                </button>
+              </div>
+              <div v-if="!signinModalStudents.length" class="signin-empty">
+                没有找到匹配的学员
+              </div>
+            </div>
+
+            <!-- 弹窗底部 -->
+            <div class="signin-modal-footer">
+              <button class="btn btn-outline" @click="closeSigninModal()">❌ 取消</button>
+              <button class="btn btn-primary" @click="batchSignin()"
+                      :disabled="!signinSelectedIds.length">
+                ✚ 批量签到（{{ signinSelectedIds.length }}人）
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 签到列表/日历 卡片 -->
+        <div class="card" style="margin-top:18px;" v-if="signinViewMode!=='day' || todaySigninList.length">
+          <div class="card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <template v-if="signinViewMode==='day'">
+              📋 {{ todaySigninDateLabel }} {{ signinDate===today()?'今日':'已' }}签到 ({{ todaySigninList.length }}人)
+            </template>
+            <template v-else>
+              📅 {{ signinViewMode.replace('-','年')+'月' }} 签到日历 ({{ monthSigninDays.reduce((s,d)=>s+d.count,0) }}次)
+            </template>
+            <select v-model="signinViewMode" class="!w-36"
+                    style="padding:3px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;background:#fff;cursor:pointer;">
+              <option value="day">当天查询</option>
+              <option v-for="m in signinMonthOptions" :key="m" :value="m">{{ m.replace('-','年')+'月' }}</option>
+            </select>
+          </div>
+
+          <!-- ===== 按日：签到列表 ===== -->
+          <template v-if="signinViewMode==='day'">
+          <!-- 批量操作栏 -->
+          <div v-if="todaySigninSelectedIds.length" style="display:flex;align-items:center;gap:12px;padding:8px 14px;margin-bottom:10px;background:#fef3c7;border-radius:8px;border:1px solid #fcd34d;flex-wrap:wrap;">
+            <span style="font-size:13px;font-weight:600;color:#92400e;">已选 {{ todaySigninSelectedIds.length }} 条</span>
+            <button class="btn btn-sm" style="background:#fff;border:1px solid var(--border);" @click="batchEditSigninDate">📅 批量改日期</button>
+            <button class="btn btn-sm btn-danger" @click="batchDeleteSignin">🗑 批量删除</button>
+            <button class="btn btn-sm btn-outline" @click="todaySigninSelectedIds=[]">取消选择</button>
+          </div>
+          <div v-for="g in todaySigninByCourse" :key="g.courseName" style="margin-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:8px 8px 0 0;border-left:4px solid;margin-left:0;">
+              <input type="checkbox" :checked="courseAllSelected(g)" @change="toggleCourseSelect(g)" style="width:16px;height:16px;cursor:pointer;margin:0;" />
+              <span class="color-dot" :style="{background:g.courseColor}"></span>
+              <span style="font-weight:700;font-size:14px;">{{ g.courseName }}（{{ g.records.length }}人）</span>
+            </div>
+            <div style="border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;overflow:hidden;">
+              <div v-for="(s,idx) in g.records" :key="s.id" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);" :style="{background:idx%2===0?'#fff':'var(--bg)'}">
+                <input type="checkbox" :checked="todaySigninSelectedIds.includes(s.id)" @change="toggleTodaySigninSelect(s.id)" style="width:16px;height:16px;cursor:pointer;margin:0;flex-shrink:0;" />
+                <span style="flex:1;font-weight:600;font-size:14px;">{{ s.studentName }}</span>
+                <span v-if="s.signin_type==='gift'" style="font-size:12px;color:#be185d;background:#fce7f3;padding:1px 6px;border-radius:4px;">🎁赠课</span>
+                <span v-else style="font-size:12px;color:#64748b;background:#f1f5f9;padding:1px 6px;border-radius:4px;">正常</span>
+                <span style="font-size:13px;color:var(--text-muted);">{{ s.time || '签到完成' }}</span>
+              </div>
+            </div>
+          </div>
+          </template>
+
+          <!-- ===== 按月：签到日历 ===== -->
+          <template v-else>
+          <div class="signin-month-header">
+            <span v-for="w in ['一','二','三','四','五','六','日']" :key="w" class="signin-month-weekday">{{ w }}</span>
+          </div>
+          <div class="signin-month-grid">
+            <div v-for="i in (new Date(parseInt(signinViewMode.slice(0,4)),parseInt(signinViewMode.slice(5,7))-1,1).getDay()||7)-1"
+                 :key="'pad-'+i" class="signin-month-cell signin-month-cell-empty"></div>
+            <div v-for="d in monthSigninDays" :key="d.date"
+                 class="signin-month-cell" :class="{
+                   'signin-month-today': d.date===today(),
+                   'signin-month-has-record': d.count>0
+                 }" @click="goToSigninDay(d.date)" :title="d.count+'人签到'">
+              <span class="signin-month-day">{{ d.day }}</span>
+              <span v-if="d.count>0" class="signin-month-count">{{ d.count }}</span>
+            </div>
+          </div>
+          </template>
+        </div>
+        </template>
+      </div>
+
+      <!-- ===== 学生管理 ===== -->
+      <div v-if="currentPage==='students'">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">学生管理</h2>
+          <button class="btn btn-primary btn-sm" @click="openStudentModal()">+ 新增</button>
+        </div>
+
+        <!-- 搜索筛选 -->
+        <div class="card mb-4">
+          <div class="flex gap-3 flex-wrap">
+            <input class="!w-60" placeholder="搜索学生姓名/电话..." v-model="stuSearchText" @input="filterStudents" />
+            <select class="!w-36" v-model="stuFilterCourse" @change="filterStudents">
+              <option value="">全部课程</option>
+              <option v-for="c in activeCourses" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 学生列表 -->
+        <div class="card">
+          <table v-if="filteredStudents.length">
+            <thead><tr><th>姓名</th><th>电话</th><th>报名课程</th><th>备注</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="s in filteredStudents" :key="s.id">
+                <td class="font-medium"><a href="javascript:;" @click="showStudentDetail(s)" class="text-blue-600 hover:text-blue-800 hover:underline">{{ s.name }}</a><span v-if="s.gender" class="ml-1 text-xs" :style="{color:s.gender==='male'?'#1d4ed8':'#be185d'}">{{ s.gender==='male'?'♂':'♀' }}</span></td>
+                <td>{{ s.phone || '-' }}</td>
+                <td>
+                  <div class="flex flex-wrap gap-1">
+                    <span v-for="e in getDistinctEnrollmentsOfStudent(s.id)" :key="e.course_type"
+                          class="badge badge-blue text-xs">
+                      <span class="color-dot mr-1" :style="{background:getCourseColorById(e.course_type)}"></span>
+                      {{ getCourseNameById(e.course_type) }}
+                    </span>
+                  </div>
+                </td>
+                <td class="text-gray-500 text-sm">{{ s.remark || '-' }}</td>
+                <td>
+                  <div class="flex gap-1">
+                    <button class="btn btn-primary btn-sm" @click="showStudentDetail(s)">详情</button>
+                    <button class="btn btn-outline btn-sm" @click="openStudentModal(s)">编辑</button>
+                    <button class="btn btn-success btn-sm" @click="openEnrollmentModal(s)">+ 报名</button>
+                    <button class="btn btn-danger btn-sm" @click="confirmDelete('student', s)">删除</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state"><p>暂无学生数据</p></div>
+        </div>
+      </div>
+
+      <!-- ===== 学员详情 ===== -->
+      <div v-if="currentPage==='student-detail'">
+        <div class="flex items-center mb-4">
+          <button class="btn btn-outline btn-sm mr-3" @click="currentPage='students'">← 返回</button>
+          <h2 class="text-lg font-bold">学员详情 — {{ detailStudent?.name }}</h2>
+        </div>
+
+        <!-- 基本信息卡片 -->
+        <div class="card mb-4">
+          <h3 class="font-bold mb-3 text-base border-b pb-2">基本信息</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div><span class="text-gray-500 text-sm">姓名：</span><span class="font-medium">{{ detailStudent?.name }}</span><span v-if="detailStudent?.gender" class="ml-1 text-sm" :style="{color:detailStudent.gender==='male'?'#1d4ed8':'#be185d'}">{{ detailStudent.gender==='male'?'♂ 男':'♀ 女' }}</span></div>
+            <div><span class="text-gray-500 text-sm">电话：</span><span>{{ detailStudent?.phone || '-' }}</span></div>
+            <div><span class="text-gray-500 text-sm">备注：</span><span>{{ detailStudent?.remark || '-' }}</span></div>
+            <div><span class="text-gray-500 text-sm">报名时间：</span><span>{{ formatTime(detailStudent?.created_at) || '-' }}</span></div>
+          </div>
+        </div>
+
+        <!-- 统计摘要 -->
+        <div class="card mb-4">
+          <h3 class="font-bold mb-3 text-base border-b pb-2">统计摘要</h3>
+          <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
+            <div class="bg-blue-50 rounded p-3 text-center">
+              <div class="text-xl font-bold text-blue-700">{{ detailRecords.length }}</div>
+              <div class="text-xs text-gray-500">总签到次数</div>
+              <div v-if="detailCourseBreakdown.length" class="text-xs text-gray-400 mt-2 pt-2 border-t border-blue-100 leading-relaxed">
+                <template v-for="(b,i) in detailCourseBreakdown"><template v-if="b.signinCount>0">{{ b.name }} {{ b.signinCount }}<span v-if="i<detailCourseBreakdown.length-1"> · </span></template></template>
+              </div>
+            </div>
+            <div class="bg-green-50 rounded p-3 text-center">
+              <div class="text-xl font-bold text-green-700">{{ detailCourseTypeCount }}</div>
+              <div class="text-xs text-gray-500">报名课程</div>
+              <div v-if="detailCourseBreakdown.length" class="text-xs text-gray-400 mt-2 pt-2 border-t border-green-100 leading-relaxed">
+                <template v-for="(b,i) in detailCourseBreakdown">{{ b.name }}<span v-if="i<detailCourseBreakdown.length-1"> · </span></template>
+              </div>
+            </div>
+            <div class="bg-purple-50 rounded p-3 text-center">
+              <div class="text-xl font-bold text-purple-700">¥{{ detailTotalSpent.toFixed(0) }}</div>
+              <div class="text-xs text-gray-500">累计缴费</div>
+              <div v-if="detailCourseBreakdown.length" class="text-xs text-gray-400 mt-2 pt-2 border-t border-purple-100 leading-relaxed">
+                <template v-for="(b,i) in detailCourseBreakdown"><template v-if="b.spent>0">{{ b.name }} ¥{{ b.spent }}<span v-if="i<detailCourseBreakdown.length-1"> · </span></template></template>
+              </div>
+            </div>
+            <div class="bg-orange-50 rounded p-3 text-center">
+              <div class="text-xl font-bold text-orange-700">{{ detailTotalLessons }}</div>
+              <div class="text-xs text-gray-500">总课时</div>
+              <div v-if="detailCourseBreakdown.length" class="text-xs text-gray-400 mt-2 pt-2 border-t border-orange-100 leading-relaxed">
+                <template v-for="(b,i) in detailCourseBreakdown"> {{ b.name }} {{ b.lessons }}节<span v-if="i<detailCourseBreakdown.length-1"> · </span></template>
+              </div>
+            </div>
+            <div class="bg-teal-50 rounded p-3 text-center">
+              <div class="text-xl font-bold text-teal-600">{{ detailTotalRemaining }}</div>
+              <div class="text-xs text-gray-500">剩余课时</div>
+              <div v-if="detailCourseBreakdown.length" class="text-xs text-gray-400 mt-2 pt-2 border-t border-teal-100 leading-relaxed">
+                <template v-for="(b,i) in detailCourseBreakdown"> {{ b.name }} {{ b.remaining }}节<span v-if="i<detailCourseBreakdown.length-1"> · </span></template>
+              </div>
+            </div>
+            <div class="bg-pink-50 rounded p-3 text-center">
+              <div class="text-xl font-bold text-pink-600">{{ detailTotalGiftLessons }}</div>
+              <div class="text-xs text-gray-500">赠课课时</div>
+              <div v-if="detailCourseBreakdown.length" class="text-xs text-gray-400 mt-2 pt-2 border-t border-pink-100 leading-relaxed">
+                <template v-for="(b,i) in detailCourseBreakdown"><template v-if="b.giftLessons>0">{{ b.name }} {{ b.giftLessons }}节<span v-if="i<detailCourseBreakdown.length-1"> · </span></template></template>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 报名和续费记录 -->
+        <div class="card mb-4">
+          <h3 class="font-bold mb-3 text-base border-b pb-2">
+            报名和续费记录 ({{ detailOrders.length }})
+            <button class="btn btn-success btn-xs ml-2" @click="openEnrollmentModal(detailStudent)">+ 报名</button>
+            <select v-model="detailOrderMonth" class="!w-32 !text-xs ml-2">
+              <option value="">全部月份</option>
+              <option v-for="m in detailOrderMonths" :key="m" :value="m">{{ m.slice(5) }}月</option>
+            </select>
+          </h3>
+          <table v-if="detailFilteredOrders.length" class="w-full text-sm">
+            <thead><tr><th>类型</th><th>日期</th><th>课程</th><th>总课时</th><th>剩余</th><th>单价</th><th>课时</th><th>金额</th><th>赠课</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="o in detailFilteredOrders" :key="o.uid" :class="['border-t', o.isRefunded ? 'bg-gray-50 text-gray-400' : '']">
+                <td><span :class="o.isRefunded ? 'badge badge-red' : (o.type==='enroll'?'badge badge-blue':'badge badge-yellow')">{{ o.isRefunded ? '已退费' : (o.type==='enroll'?'报名':'续费') }}</span></td>
+                <td>{{ o.date }}</td>
+                <td><span class="color-dot mr-1" :style="{background:getCourseColorById(o.course_type)}"></span>{{ getCourseNameById(o.course_type) }}</td>
+                <td>{{ o.totalLessons }}节</td>
+                <td :class="{'text-orange-600 font-bold': o.type==='enroll' && !o.isRefunded && (o.remaining||0)<=5}">{{ o.isRefunded ? '-' : (o.remaining!=null ? o.remaining+'节' : '-') }}</td>
+                <td>¥{{ o.price?.toFixed(0)||0 }}/节</td>
+                <td class="font-medium">{{ o.type==='renew' ? '+' : '' }}{{ o.lessons }}节</td>
+                <td class="font-medium">¥{{ o.amount?.toFixed(0)||0 }}</td>
+                <td>{{ o.gift_lessons||0 }}节</td>
+                <td>
+                  <template v-if="o.isRefunded">
+                    <button class="btn btn-outline btn-xs" @click="viewRefundDetail(o)">退费详情</button>
+                  </template>
+                  <template v-else-if="o.type==='enroll' && (o.remaining||0) > 0">
+                    <button class="btn btn-outline btn-xs mr-1" @click="editDetailOrder(o)">编辑</button>
+                    <button class="btn btn-danger btn-xs mr-1" @click="deleteDetailOrder(o)">删除</button>
+                    <button class="btn btn-warning btn-xs" @click="openRefundModal(o)">退费</button>
+                  </template>
+                  <template v-else-if="o.type==='enroll'">
+                    <button class="btn btn-outline btn-xs mr-1" @click="editDetailOrder(o)">编辑</button>
+                    <button class="btn btn-danger btn-xs" @click="deleteDetailOrder(o)">删除</button>
+                  </template>
+                  <template v-else>
+                    <button class="btn btn-outline btn-xs mr-1" @click="editDetailOrder(o)">编辑</button>
+                    <button class="btn btn-danger btn-xs" @click="deleteDetailOrder(o)">删除</button>
+                  </template>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-else class="text-gray-400 text-center py-6">暂无报名和续费记录</p>
+        </div>
+
+        <!-- 签到记录 -->
+        <div class="card mb-4">
+          <h3 class="font-bold mb-3 text-base border-b pb-2">
+            签到记录 ({{ detailRecords.length }})
+            <select v-model="detailRecordMonth" class="!w-32 !text-xs ml-2">
+              <option value="">全部月份</option>
+              <option v-for="m in detailRecordMonths" :key="m" :value="m">{{ m.slice(5) }}月</option>
+            </select>
+          </h3>
+          <table v-if="detailFilteredRecords.length" class="w-full text-sm">
+            <thead><tr><th>日期</th><th>时间</th><th>课程</th><th>类型</th><th>状态</th></tr></thead>
+            <tbody>
+              <tr v-for="r in detailFilteredRecords" :key="r.id" class="border-t">
+                <td>{{ r.date }}</td>
+                <td>{{ r.time || '-' }}</td>
+                <td><template v-for="en in enrollments.filter(e=>e.id===r.enrollment_id)"><span class="color-dot mr-1" :style="{background:getCourseColorById(en.course_type)}"></span>{{ getCourseNameById(en.course_type) }}</template></td>
+                <td><span :class="r.signin_type==='gift'?'badge badge-red text-xs':'badge badge-green text-xs'">{{ r.signin_type==='gift'?'🎁赠课':'正常' }}</span></td>
+                <td><span :class="r.status==='present'?'badge badge-green':'badge badge-yellow'">{{ r.status==='present'?'出勤':r.status==='absent'?'缺勤':'补课' }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-else class="text-gray-400 text-center py-6">暂无签到记录</p>
+        </div>
+      </div>
+
+      <!-- ===== 课程报名 ===== -->
+      <div v-if="currentPage==='enrollments'">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">课程报名</h2>
+          <button class="btn btn-primary btn-sm" @click="openEnrollmentModal()">+ 新建报名</button>
+        </div>
+
+        <div class="card mb-4">
+          <div class="flex gap-3 flex-wrap">
+            <select class="!w-40" v-model="enrFilterCourse" @change="filterEnrollments">
+              <option value="">全部课程</option>
+              <option v-for="c in activeCourses" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+            <select class="!w-32" v-model="enrFilterActive" @change="filterEnrollments">
+              <option value="">全部状态</option>
+              <option value="true">有效</option>
+              <option value="false">已停用</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <table v-if="filteredEnrollments.length">
+            <thead><tr><th>学生</th><th>课程类型</th><th>总费用</th><th>总课时</th><th>剩余</th><th>课单价</th><th>状态</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="e in filteredEnrollments" :key="e.id">
+                <td class="font-medium">{{ getStudentName(e.student_id) }}</td>
+                <td><span class="color-dot mr-1" :style="{background:getCourseColorById(e.course_type)}"></span>{{ getCourseNameById(e.course_type) }}</td>
+                <td>¥{{ e.total_fee?.toLocaleString()||0 }}</td>
+                <td>{{ e.lessons }}节</td>
+                <td :class="{'text-red-600 font-bold':(e.remaining||0)<=3}">{{ e.remaining||0 }}节</td>
+                <td>¥{{ e.price||0 }}/节</td>
+                <td><span :class="['badge', e.active?'badge-green':'badge-gray']">{{ e.active?'有效':'停用' }}</span></td>
+                <td>
+                  <div class="flex gap-1">
+                    <button class="btn btn-outline btn-sm" @click="openEnrollmentModal(null,e)">编辑</button>
+                    <button class="btn btn-success btn-sm" @click="openRenewModal(e)">续费</button>
+                    <button class="btn btn-danger btn-sm" @click="confirmDelete('enrollment', e)">删除</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state"><p>暂无报名数据</p></div>
+        </div>
+      </div>
+
+      <!-- ===== 签到记录 ===== -->
+      <div v-if="currentPage==='records'">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">签到记录</h2>
+          <button class="btn btn-primary btn-sm" @click="openRecordEditModal()">+ 签到</button>
+        </div>
+
+        <div class="card mb-4">
+          <div class="flex gap-3 flex-wrap items-end">
+            <div>
+              <label>月份</label>
+              <input type="month" v-model="recFilterMonth" @change="loadRecords" class="!w-40" />
+            </div>
+            <select class="!w-40" v-model="recFilterStudent" @change="loadRecords">
+              <option value="">全部学生</option>
+              <option v-for="s in students" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+            <select class="!w-36" v-model="recFilterCourse" @change="loadRecords">
+              <option value="">全部课程</option>
+              <option v-for="c in activeCourses" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <table v-if="filteredRecords.length">
+            <thead><tr><th>日期</th><th>学生</th><th>课程</th><th>课单价</th><th>FIFO单价</th><th>备注</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="r in filteredRecords" :key="r.id">
+                <td class="font-medium whitespace-nowrap">{{ r.date }}</td>
+                <td>{{ getStudentName(r.student_id) }}</td>
+                <td><span class="color-dot mr-1" :style="{background:getCourseColor(r.enrollment_id)}"></span>{{ getCourseName(r.enrollment_id) }}</td>
+                <td>¥{{ getPriceByEnrollmentId(r.enrollment_id)||0 }}</td>
+                <td>¥{{ calcFifoPriceForRecord(r) }}</td>
+                <td><span class="badge badge-gray" v-if="r.time">{{ r.time }}</span></td>
+                <td>
+                  <div class="flex gap-1">
+                    <button class="btn btn-outline btn-sm" @click="openRecordEditModal(r)">编辑</button>
+                    <button class="btn btn-danger btn-sm" @click="confirmDelete('record', r)">删除</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state"><p>该月暂无签到记录</p></div>
+        </div>
+      </div>
+
+      <!-- ===== 续费记录 ===== -->
+      <div v-if="currentPage==='renewals'">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">续费记录</h2>
+        </div>
+
+        <div class="card mb-4">
+          <div class="flex gap-3 flex-wrap">
+            <select class="!w-40" v-model="renFilterStudent" @change="filterRenewals">
+              <option value="">全部学生</option>
+              <option v-for="s in students" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <table v-if="filteredRenewals.length">
+            <thead><tr><th>日期</th><th>学生</th><th>课程</th><th>金额</th><th>课时</th><th>赠送</th><th>单价</th><th>备注</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="r in filteredRenewals" :key="r.id">
+                <td class="whitespace-nowrap">{{ r.date }}</td>
+                <td class="font-medium">{{ getStudentNameByEnrollment(r.enrollment_id) }}</td>
+                <td>{{ getCourseNameByEnrollment(r.enrollment_id) }}</td>
+                <td>¥{{ r.fee?.toLocaleString()||0 }}</td>
+                <td>+{{ r.lessons }}节</td>
+                <td v-if="r.gift_lessons">+{{ r.gift_lessons }}赠</td>
+                <td v-else>-</td>
+                <td>¥{{ r.price||0 }}</td>
+                <td class="text-gray-500 text-sm">{{ r.note||'-' }}</td>
+                <td>
+                  <div class="flex gap-1">
+                    <button class="btn btn-outline btn-sm" @click="openRenewEditModal(r)">编辑</button>
+                    <button class="btn btn-danger btn-sm" @click="confirmDelete('renewal', r)">删除</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state"><p>暂无续费记录</p></div>
+        </div>
+      </div>
+
+      <!-- ===== 月度汇总 ===== -->
+      <div v-if="currentPage==='monthly'">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">月度汇总</h2>
+          <div class="flex gap-2">
+            <input type="month" v-model="summaryMonth" @change="calcSummary" class="!w-44" />
+          </div>
+        </div>
+
+        <!-- 收入统计卡片 -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="stat-card" style="cursor:pointer" @click="feeDetailMonth=summaryMonth;currentPage='feedetail'">
+            <div class="stat-value text-blue-600">¥{{ summaryStats.totalIncome.toLocaleString() }}</div>
+            <div class="stat-label">总课时费收入 <span style="font-size:11px;color:#94a3b8;">→ 设置</span></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value text-green-600">¥{{ summaryStats.totalConsumed.toLocaleString() }}</div>
+            <div class="stat-label">总耗课金额</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value text-orange-600">{{ summaryStats.totalLessons }}节</div>
+            <div class="stat-label">总耗课节数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value text-purple-600">{{ summaryStats.uniqueStudents }}人</div>
+            <div class="stat-label">上课人数</div>
+          </div>
+        </div>
+
+        <!-- 按课程类型分组 -->
+        <div class="card mb-6">
+          <h3 class="font-bold text-base mb-3 text-gray-800">按课程类型统计</h3>
+          <table v-if="summaryStats.byCourse.length">
+            <thead><tr><th>课程类型</th><th>签到次数</th><th>课单价</th><th>耗课金额</th><th>课时费收入</th><th>上课人数</th></tr></thead>
+            <tbody>
+              <tr v-for="cs in summaryStats.byCourse" :key="cs.courseType">
+                <td class="font-medium"><span class="color-dot mr-1" :style="{background:cs.color}"></span>{{ cs.name }}</td>
+                <td>{{ cs.count }}次</td>
+                <td class="text-gray-600">¥{{ cs.avgPrice }}</td>
+                <td class="font-semibold text-green-600">¥{{ cs.consumedAmount.toLocaleString() }}</td>
+                <td class="font-semibold text-blue-600">¥{{ cs.income.toLocaleString() }}</td>
+                <td>{{ cs.students }}人</td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state"><p>选择月份后查看统计</p></div>
+        </div>
+
+        <!-- 耗课明细 -->
+        <div class="card">
+          <h3 class="font-bold text-base mb-3 text-gray-800">耗课金额明细（按学生）</h3>
+          <table v-if="summaryStats.detail.length">
+            <thead><tr><th>学生</th><th>课程</th><th>签到次数</th><th>课单价</th><th>耗课金额(FIFO)</th></tr></thead>
+            <tbody>
+              <tr v-for="d in summaryStats.detail" :key="d.studentId+d.courseType">
+                <td class="font-medium">{{ d.name }}</td>
+                <td><span class="color-dot mr-1" :style="{background:d.color}"></span>{{ d.courseName }}</td>
+                <td>{{ d.count }}次</td>
+                <td class="text-gray-600">¥{{ d.avgPrice }}</td>
+                <td class="font-semibold text-green-600">¥{{ d.consumedAmount.toLocaleString() }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state"><p>暂无数据</p></div>
+        </div>
+      </div>
+
+      <!-- ===== 课程管理 ===== -->
+      <div v-if="currentPage==='courses'">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">课程管理</h2>
+          <button class="btn btn-primary btn-sm" @click="openCourseModal()">+ 自定义课程</button>
+        </div>
+
+        <div class="card">
+          <table>
+            <thead><tr><th>课程ID</th><th>名称</th><th>颜色</th><th>比例计费</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="c in activeCourses" :key="c.id">
+                <td class="font-mono text-xs text-gray-500">{{ c.id }}</td>
+                <td class="font-medium">{{ c.name }}</td>
+                <td><span class="color-dot" :style="{background:c.color}"></span> {{ c.color }}</td>
+                <td><span :class="['badge',c.is_percent?'badge-blue':'badge-gray']">{{ c.is_percent?'是':'否' }}</span></td>
+                <td>
+                  <button v-if="!isPresetCourse(c.id)" class="btn btn-outline btn-sm" @click="openCourseModal(c)">编辑</button>
+                  <button v-if="!isPresetCourse(c.id)" class="btn btn-danger btn-sm ml-1" @click="confirmDelete('course',c)">删除</button>
+                  <span v-else class="text-gray-400 text-xs">预设课程</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== 出勤奖励 ===== -->
+      <div v-if="currentPage==='awards'">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">出勤奖励规则</h2>
+          <button class="btn btn-outline btn-sm" @click="openAwardRuleModal(null)">⚙️ 设置</button>
+        </div>
+
+        <!-- 本月达标学员 -->
+        <div class="card" style="margin-top:16px;">
+          <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>📋 本月达标学员</span>
+            <select v-model="awardQualifiedFilter" class="input input-sm" style="width:auto;padding:0.25rem 0.5rem;font-size:12px;">
+              <option value="all">全部课程</option>
+              <option v-for="opt in awardCourseOptions" :key="opt.id" :value="opt.id">{{ opt.name }}</option>
+            </select>
+          </div>
+          <table v-if="filteredAwardList.length">
+            <thead><tr><th>学员</th><th>课程</th><th style="text-align:right;">签到次数</th><th style="text-align:right;">奖励课时</th></tr></thead>
+            <tbody>
+              <tr v-for="(a,ai) in filteredAwardList" :key="ai">
+                <td>{{ a.studentName }}</td>
+                <td>{{ a.courseName }}</td>
+                <td style="text-align:right;font-weight:600;">{{ a.count }}次</td>
+                <td style="text-align:right;color:#059669;font-weight:600;">+{{ a.reward }}元 <span style="font-size:11px;color:var(--text-muted);">(累计{{ a.tierCount }}次以上)</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state"><p>{{ awardQualifiedFilter === 'all' ? '本月暂无学员达到奖励标准' : '该课程筛选后无达标学员' }}</p></div>
+        </div>
+
+        <!-- 本月未达标学员 -->
+        <div v-if="monthNotQualifyingList.length" class="card" style="margin-top:16px;">
+          <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>⚠️ 本月未达标学员</span>
+            <select v-model="awardNotQualifyingFilter" class="input input-sm" style="width:auto;padding:0.25rem 0.5rem;font-size:12px;">
+              <option value="all">全部课程</option>
+              <option v-for="opt in awardCourseOptions" :key="opt.id" :value="opt.id">{{ opt.name }}</option>
+            </select>
+          </div>
+          <table v-if="filteredNotQualifyingList.length">
+            <thead><tr><th>学员</th><th>课程</th><th style="text-align:right;">签到次数</th><th style="text-align:right;">最低要求</th><th style="text-align:right;">差距</th></tr></thead>
+            <tbody>
+              <tr v-for="(a,ai) in filteredNotQualifyingList" :key="ai">
+                <td>{{ a.studentName }}</td>
+                <td>{{ a.courseName }}</td>
+                <td style="text-align:right;">{{ a.count }}次</td>
+                <td style="text-align:right;color:var(--text-muted);">{{ a.required }}次</td>
+                <td style="text-align:right;color:#dc2626;font-weight:600;">差{{ a.gap }}次</td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state"><p>该课程本月无未达标学员</p></div>
+        </div>
+      </div>
+
+      <!-- ===== 课时费设置 ===== -->
+      <div v-if="currentPage==='feesettings'">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">课时费设置</h2>
+        </div>
+        <div class="card">
+          <p class="text-sm text-gray-500 mb-4">按课程类型设置每节课的教练课时费，用于月度汇总统计。</p>
+          <table>
+            <thead><tr><th>课程类型</th><th>课时费(元/节)</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="c in activeCourses" :key="c.id">
+                <td class="font-medium"><span class="color-dot mr-1" :style="{background:c.color}"></span>{{ c.name }}</td>
+                <td>
+                  <input type="number" class="!w-32" :value="getCoachFee(c.id)"
+                         @change="saveCoachFee(c.id,$event.target.value)" placeholder="0" />
+                </td>
+                <td><span class="text-gray-400 text-xs">自动保存</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== 课时费明细（从月度汇总点击进入） ===== -->
+      <div v-if="currentPage==='feedetail'">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <button class="text-gray-400 hover:text-gray-600 text-sm" @click="currentPage='monthly'">← 返回月度汇总</button>
+            <h2 class="text-lg font-bold">课时费设置与明细</h2>
+          </div>
+          <div class="flex items-center gap-3">
+            <button v-if="feeConfigsForMonth.length&&feeConfigsForMonth.every(c=>c.locked)"
+                    class="btn !bg-gray-100 !text-gray-600 text-sm" @click="unlockAllFees">🔓 撤回确定</button>
+            <button v-if="feeConfigsForMonth.some(c=>!c.locked)"
+                    class="btn text-sm relative" @click="lockAllFees">💾 确定本月设置
+              <span class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-10 h-1 rounded-full" style="background:#3b82f6"></span>
+            </button>
+            <input type="month" v-model="feeDetailMonth" @change="e=>feeDetailMonth=e.target.value" class="!w-44" />
+          </div>
+        </div>
+
+        <!-- 课时费设置卡片 -->
+        <div class="card mb-6" style="border-top:4px solid #1e40af">
+          <h3 class="font-bold mb-3 text-base text-gray-800">各课程教练课时费设置</h3>
+          <table>
+            <thead><tr><th>课程类型</th><th>计算方式</th><th>金额</th><th>状态</th></tr></thead>
+            <tbody>
+              <tr v-for="c in activeCourses" :key="c.id" :class="getFeeCfgForCourse(c.id).locked?'opacity-70':''">
+                <td class="font-medium"><span class="color-dot mr-1" :style="{background:c.color}"></span>{{ c.name }}</td>
+                <td>
+                  <select :value="getFeeCfgForCourse(c.id).mode||'fixed'"
+                          @change="saveFeeConfig(c.id, 'mode', $event.target.value)"
+                          :disabled="getFeeCfgForCourse(c.id).locked"
+                          class="!w-28">
+                    <option value="fixed">固定金额</option>
+                    <option value="percent">百分比</option>
+                  </select>
+                </td>
+                <td>
+                  <span v-if="(getFeeCfgForCourse(c.id).mode||'fixed')==='fixed'">
+                    <input type="number" class="!w-24"
+                           :value="getFeeCfgForCourse(c.id).value||0"
+                           @change="saveFeeConfig(c.id, 'value', Number($event.target.value)||0)"
+                           :disabled="getFeeCfgForCourse(c.id).locked" /> 元/节
+                  </span>
+                  <span v-else>
+                    <input type="number" class="!w-24"
+                           :value="getFeeCfgForCourse(c.id).value||0"
+                           @change="saveFeeConfig(c.id, 'value', Number($event.target.value)||0)"
+                           :disabled="getFeeCfgForCourse(c.id).locked" /> %
+                  </span>
+                </td>
+                <td>
+                  <span v-if="getFeeCfgForCourse(c.id).locked" class="text-gray-400 text-xs">🔒 已锁定</span>
+                  <span v-else class="text-gray-400 text-xs">可编辑</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 课时费汇总卡片 -->
+        <div class="flex flex-wrap gap-3 mb-4">
+          <!-- 总收入卡片 -->
+          <div class="rounded-lg p-4 flex-1 min-w-[140px]" style="background:#f0f4ff;border-left:4px solid #3b82f6">
+            <div class="text-sm font-bold text-gray-700 mb-1">教练课时费总收入</div>
+            <div class="text-xl font-bold" style="color:#3b82f6">¥{{ (feeDetailTotal + giftDetailTotal + manualCourseTotal).toLocaleString() }}</div>
+          </div>
+          <!-- 各课程卡片 -->
+          <div v-for="c in activeCourses" :key="'card-'+c.id"
+               class="rounded-lg p-4 flex-1 min-w-[140px]" style="background:#f8fafc"
+               :style="{borderLeft:'4px solid '+c.color}">
+            <div class="text-sm font-bold text-gray-700 mb-1">{{ c.name }}</div>
+            <div class="text-xl font-bold" :style="{color:c.color}">
+              ¥{{ (feeCourseMap[c.id]&&feeCourseMap[c.id].subtotal||0).toLocaleString() }}
+            </div>
+            <div class="text-xs text-gray-400 mt-0.5">
+              {{ feeCourseMap[c.id] ? feeCourseMap[c.id].studentRows.reduce((s,r)=>s+r.count,0) : 0 }}次签到
+            </div>
+          </div>
+        </div>
+
+        <!-- 赠课课时费明细 -->
+        <div v-if="giftDetail.length" class="card mb-4" style="border-top:4px solid #1e40af">
+          <h3 class="font-bold mb-3 text-base" style="color:#e75a5a">
+            🎁 本月赠课：共 {{ giftDetail.reduce((s,r)=>s+r.count,0) }} 次，合计 ¥{{ giftDetailTotal.toLocaleString() }}
+            <span class="float-right">
+              <button v-if="!giftFeeLocked" @click="lockGiftFees" class="btn text-xs px-2 py-1" style="background:#e75a5a;color:#fff;">🔒 确定</button>
+              <button v-else @click="unlockGiftFees" class="btn text-xs px-2 py-1" style="background:#f0f0f0;color:#999;">🔓 撤回</button>
+            </span>
+          </h3>
+          <table>
+            <thead>
+              <tr>
+                <th>学员</th>
+                <th>课程</th>
+                <th>次数</th>
+                <th>教练费</th>
+                <th>合计</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in giftDetail" :key="r.studentId+'|'+r.courseType">
+                <td class="font-medium">{{ r.studentName }}</td>
+                <td>
+                  <span class="color-dot mr-1" :style="{background:getCourseColorById(r.courseType)}"></span>
+                  {{ r.courseName }}
+                </td>
+                <td>{{ r.count }}次</td>
+                <td>
+                  <input type="number" class="input inline-block w-20 text-center text-sm py-1"
+                         placeholder="0" min="0" :value="r.coachFee" :disabled="giftFeeLocked"
+                         @change="e => updateGiftFee(r.studentId+'|'+r.courseType, e.target.value)" />
+                </td>
+                <td class="font-semibold text-blue-600">¥{{ (r.count * r.coachFee).toLocaleString() }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 手动结算课程（每课程一张卡片，样式同赠课） -->
+        <div v-for="mc in manualCourseDetails" :key="'manual-'+mc.courseType"
+             class="card mb-4" style="border-top:4px solid #1e40af">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-bold text-base text-gray-800">
+              📊 手动结算：<span class="color-dot ml-1 mr-1" :style="{background:mc.color}"></span>{{ mc.courseName }}
+              <span class="text-gray-400 font-normal text-xs ml-2">
+                共 {{ mc.rows.reduce((s,r)=>s+r.count,0) }} 次, 合计 ¥{{ mc.total.toLocaleString() }}
+              </span>
+            </h3>
+            <div class="flex items-center gap-2">
+              <button v-if="manualSettlementLocked[mc.courseType]"
+                      class="btn !bg-gray-100 !text-gray-600 text-xs" @click="unlockManualCourse(mc.courseType)">🔓 撤回确定</button>
+              <button v-else
+                      class="btn text-xs relative" @click="lockManualCourse(mc.courseType)">💾 确定
+                <span class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-6 h-1 rounded-full" style="background:#3b82f6"></span>
+              </button>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr><th>学员</th><th>课程</th><th>次数</th><th>教练费</th><th>合计</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in mc.rows" :key="r.studentId+'|'+r.courseType">
+                <td class="font-medium">{{ r.studentName }}</td>
+                <td>
+                  <span class="color-dot mr-1" :style="{background:mc.color}"></span>
+                  {{ r.courseName }}
+                </td>
+                <td>{{ r.count }}次</td>
+                <td>
+                  <input type="number" class="input inline-block w-20 text-center text-sm py-1"
+                         placeholder="0" min="0" :value="r.coachFee"
+                         :disabled="manualSettlementLocked[mc.courseType]"
+                         @change="e => updateManualFee(r.courseType, r.studentId, e.target.value)" />
+                </td>
+                <td class="font-semibold text-blue-600">¥{{ (r.count * r.coachFee).toLocaleString() }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 本月签到课时费分组明细 -->
+        <div class="card" style="border-top:4px solid #1e40af">
+          <h3 class="font-bold mb-3 text-base text-gray-800">
+            {{ feeDetailMonth || '本月' }} 签到课时费明细（正常签到）
+            <span class="text-gray-400 font-normal text-xs ml-2">
+              共 {{ feeDetailByCourse.reduce((s,g)=>s+g.records.length,0) }} 次签到，合计 ¥{{ feeDetailTotal.toLocaleString() }}
+            </span>
+          </h3>
+          <div v-if="feeDetailByCourse.length">
+            <div v-for="group in feeDetailByCourse" :key="group.courseType" class="mb-4">
+              <div class="flex items-center justify-between mb-2 px-2 py-1 rounded" style="background:#f8fafc">
+                <span class="font-bold text-base">
+                  <span class="color-dot mr-1" :style="{background:getCourseColorById(group.courseType)}"></span>
+                  {{ getCourseNameById(group.courseType) }}
+                </span>
+                <span class="text-xs text-gray-500">
+                  {{ group.cfg ? ((group.cfg.mode==='percent'?'比例'+group.cfg.value+'%':'固定'+group.cfg.value+'元/节') + '，') : '' }}
+                  {{ group.studentRows.reduce((s,r)=>s+r.count,0) }}次，合计 ¥{{ group.subtotal.toLocaleString() }}
+                </span>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>学员</th>
+                    <th>课单价</th>
+                    <th>次数</th>
+                    <th>教练费</th>
+                    <th>合计</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="r in group.studentRows" :key="r.studentId">
+                    <td class="font-medium">{{ r.studentName }}</td>
+                    <td>¥{{ r.unitPrice }}</td>
+                    <td>{{ r.count }}次</td>
+                    <td :class="r.coachFee>0?'font-semibold text-blue-600':'text-gray-400'">¥{{ r.coachFee }}</td>
+                    <td class="font-semibold" :class="r.total>0?'text-blue-600':'text-gray-400'">¥{{ r.total }}</td>
+                  </tr>
+                  <tr class="border-t-2 border-gray-300 bg-gray-50 font-semibold text-sm">
+                    <td>小计</td>
+                    <td>¥{{ group.studentRows.reduce((s,r)=>s+r.unitPrice,0).toLocaleString() }}</td>
+                    <td>{{ group.studentRows.reduce((s,r)=>s+r.count,0) }}次</td>
+                    <td></td>
+                    <td>¥{{ group.subtotal.toLocaleString() }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div v-else class="empty-state"><p>{{ feeDetailMonth ? '该月暂无签到记录' : '选择月份查看明细' }}</p></div>
+        </div>
+      </div>
+
+    </div> <!-- /主内容区 .main -->
+
+  </div> <!-- /主界面 -->
+
+
+  <!-- ========== 弹窗：新增/编辑学生 ========== -->
+  <div class="modal-overlay" v-if="showStudentModal" @click.self="showStudentModal=false">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3 class="font-semibold">{{ editingStudent ? '编辑学生' : '新增学生' }}</h3>
+        <button class="text-gray-400 text-xl leading-none hover:text-gray-600" @click="showStudentModal=false">&times;</button>
+      </div>
+      <div class="modal-body space-y-4">
+        <div>
+          <label>姓名 *</label>
+          <input v-model="studentForm.name" placeholder="学生姓名" />
+        </div>
+        <div>
+          <label>性别（选填）</label>
+          <div style="display:flex;gap:8px;">
+            <div @click="studentForm.gender=studentForm.gender==='male'?'':'male'"
+                 :style="{padding:'6px 18px',borderRadius:'8px',cursor:'pointer',fontSize:'14px',fontWeight:500,
+                          background:studentForm.gender==='male'?'#dbeafe':'#f1f5f9',
+                          color:studentForm.gender==='male'?'#1d4ed8':'#64748b',
+                          border:'1px solid',borderColor:studentForm.gender==='male'?'#60a5fa':'#e2e8f0'}">
+              ♂ 男
+            </div>
+            <div @click="studentForm.gender=studentForm.gender==='female'?'':'female'"
+                 :style="{padding:'6px 18px',borderRadius:'8px',cursor:'pointer',fontSize:'14px',fontWeight:500,
+                          background:studentForm.gender==='female'?'#fce7f3':'#f1f5f9',
+                          color:studentForm.gender==='female'?'#be185d':'#64748b',
+                          border:'1px solid',borderColor:studentForm.gender==='female'?'#f472b6':'#e2e8f0'}">
+              ♀ 女
+            </div>
+          </div>
+        </div>
+        <div>
+          <label>联系电话</label>
+          <input v-model="studentForm.phone" placeholder="选填" />
+        </div>
+        <div>
+          <label>备注</label>
+          <textarea v-model="studentForm.remark" rows="2" placeholder="选填"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" @click="showStudentModal=false">取消</button>
+        <button class="btn btn-primary" :disabled="!studentForm.name" @click="saveStudent">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：新建/编辑报名 ========== -->
+  <div class="modal-overlay" v-if="showEnrollmentModal" @click.self="showEnrollmentModal=false">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3 class="font-semibold">{{ editingEnrollment ? '编辑报名' : '新建报名' }}</h3>
+        <button class="text-gray-400 text-xl leading-none hover:text-gray-600" @click="showEnrollmentModal=false">&times;</button>
+      </div>
+      <div class="modal-body space-y-4">
+        <div v-if="!editingEnrollment">
+          <label>选择学生 *</label>
+          <select v-model="enrollmentForm.student_id">
+            <option value="">请选择</option>
+            <option v-for="s in students" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
+        </div>
+        <div>
+          <label>课程类型 *</label>
+          <select v-model="enrollmentForm.course_type">
+            <option value="">请选择</option>
+            <option v-for="c in activeCourses" :key="c.id" :value="c.id">{{ c.name }}</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label>总费用 (元) *</label>
+            <input type="number" v-model.number="enrollmentForm.total_fee" placeholder="如 2280" />
+          </div>
+          <div>
+            <label>总课时 (节) *</label>
+            <input type="number" v-model.number="enrollmentForm.lessons" placeholder="如 12" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label>赠送课时</label>
+            <input type="number" v-model.number="enrollmentForm.gift_lessons" placeholder="默认0" />
+          </div>
+        </div>
+        <div v-if="enrollmentForm.total_fee && enrollmentForm.lessons" class="bg-blue-50 rounded-lg p-3 text-sm">
+          <span class="text-blue-800">课单价：<strong>¥{{ Math.round(enrollmentForm.total_fee/enrollmentForm.lessons) }}</strong>/节</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" @click="showEnrollmentModal=false">取消</button>
+        <button class="btn btn-primary" :disabled="!enrollmentForm.course_type||!enrollmentForm.student_id" @click="saveEnrollment">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：签到 ========== -->
+  <div class="modal-overlay" v-if="showSigninModal" @click.self="showSigninModal=false">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3 class="font-semibold">{{ editingRecord ? '编辑签到' : '快速签到' }}</h3>
+        <button class="text-gray-400 text-xl leading-none hover:text-gray-600" @click="showSigninModal=false">&times;</button>
+      </div>
+      <div class="modal-body space-y-4">
+        <div>
+          <label>选择学生 *</label>
+          <select v-model="signinForm.student_id">
+            <option value="">请选择</option>
+            <option v-for="s in students" :key="s.id" :value="s.id">{{ s.name }}
+              <template v-if="getEnrollmentsOfStudent(s.id).length"> ({{ getEnrollmentsOfStudent(s.id).map(e=>getCourseNameById(e.course_type)).join(',') }})</template>
+            </option>
+          </select>
+        </div>
+        <div v-if="signinForm.student_id">
+          <label>选择报名（课程） *</label>
+          <select v-model="signinForm.enrollment_id">
+            <option value="">请选择</option>
+            <option v-for="e in getEnrollmentsOfStudent(signinForm.student_id)" :key="e.id" :value="e.id">
+              {{ getCourseNameById(e.course_type) }} — 剩余{{ e.remaining||0 }}节
+            </option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label>日期 *</label>
+            <input type="date" v-model="signinForm.date" />
+          </div>
+          <div>
+            <label>备注</label>
+            <input v-model="signinForm.time" placeholder="补签、试课等" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" @click="showSigninModal=false">取消</button>
+        <button class="btn btn-primary" :disabled="!signinForm.student_id||!signinForm.enrollment_id||!signinForm.date" @click="saveSignin">签到</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：续费 ========== -->
+  <div class="modal-overlay" v-if="showRenewModal" @click.self="showRenewModal=false">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3 class="font-semibold">{{ editingRenewal ? '编辑续费' : '续费' }}</h3>
+        <button class="text-gray-400 text-xl leading-none hover:text-gray-600" @click="showRenewModal=false">&times;</button>
+      </div>
+      <div class="modal-body space-y-4">
+        <div v-if="editingRenewal" class="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+          学生：{{ getStudentNameByEnrollment(editingRenewal.enrollment_id) }} | 课程：{{ getCourseNameByEnrollment(editingRenewal.enrollment_id) }}
+        </div>
+        <div v-else class="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+          学生：{{ getStudentName(enrollingFor?.student_id) }} | 课程：{{ getCourseNameById(enrollingFor?.course_type) }} | 当前剩余：{{ enrollingFor?.remaining||0 }}节
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label>续费日期 *</label>
+            <input type="date" v-model="renewForm.date" />
+          </div>
+          <div>
+            <label>金额 (元) *</label>
+            <input type="number" v-model.number="renewForm.fee" placeholder="如 2280" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label>增加课时 (节) *</label>
+            <input type="number" v-model.number="renewForm.lessons" placeholder="如 12" />
+          </div>
+          <div>
+            <label>赠送课时</label>
+            <input type="number" v-model.number="renewForm.gift_lessons" placeholder="0" />
+          </div>
+        </div>
+        <div>
+          <label>本次单价（元/节）</label>
+          <input type="number" v-model.number="renewForm.price" placeholder="自动计算或手动填写" />
+        </div>
+        <div v-if="renewForm.fee && renewForm.lessons" class="bg-green-50 rounded-lg p-3 text-sm">
+          <span class="text-green-800">自动单价：¥{{ Math.round(renewForm.fee/renewForm.lessons) }}/节</span>
+          <span v-if="renewForm.price" class="ml-2 text-gray-600">→ 使用手动价：¥{{ renewForm.price }}/节</span>
+        </div>
+        <div>
+          <label>备注</label>
+          <input v-model="renewForm.note" placeholder="选填" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" @click="showRenewModal=false">取消</button>
+        <button class="btn btn-success" :disabled="!renewForm.fee||!renewForm.lessons" @click="saveRenew">{{ editingRenewal?'保存修改':'确认续费' }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：自定义课程 ========== -->
+  <div class="modal-overlay" v-if="showCourseModal" @click.self="showCourseModal=false">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3 class="font-semibold">{{ editingCourse ? '编辑课程' : '新增课程' }}</h3>
+        <button class="text-gray-400 text-xl leading-none hover:text-gray-600" @click="showCourseModal=false">&times;</button>
+      </div>
+      <div class="modal-body space-y-4">
+        <div>
+          <label>课程名称 *</label>
+          <input v-model="courseForm.name" placeholder="如 体验课、提高班" />
+        </div>
+        <div>
+          <label>颜色</label>
+          <input type="color" v-model="courseForm.color" class="!p-1 !h-10" />
+        </div>
+        <div>
+          <label>结算方式</label>
+          <div class="flex gap-3 mt-1">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" v-model="courseForm.settlement_type" value="auto" />
+              <span class="text-sm">自动结算（计入明细表）</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" v-model="courseForm.settlement_type" value="manual" />
+              <span class="text-sm">手动输入结算（独立卡片，类似赠课）</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" @click="showCourseModal=false">取消</button>
+        <button class="btn btn-primary" :disabled="!courseForm.name.trim()" @click="saveCourse">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：出勤奖励规则 ========== -->
+  <div class="modal-overlay" v-if="showAwardModal" @click.self="showAwardModal=false">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3 class="font-semibold">{{ editingAward ? '编辑奖励规则 - ' + editingAward.course_name : '出勤奖励设置' }}</h3>
+        <button class="text-gray-400 text-xl leading-none hover:text-gray-600" @click="showAwardModal=false">&times;</button>
+      </div>
+      <!-- Tab 切换 -->
+      <div v-if="!editingAward">
+        <div class="flex border-b mb-0">
+          <button :class="['flex-1 py-2 text-sm font-medium text-center border-b-2 transition-colors', awardTab==='courses'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-700']" @click="awardTab='courses'">课程参与设置</button>
+          <button :class="['flex-1 py-2 text-sm font-medium text-center border-b-2 transition-colors', awardTab==='rules'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-700']" @click="awardTab='rules'">奖励规则设置</button>
+        </div>
+        <!-- Tab 1: 课程参与设置 -->
+        <div v-if="awardTab==='courses'" class="modal-body space-y-2">
+          <div class="text-sm text-gray-500 mb-2">开启后，该课程将出现在奖励规则列表中，并可参与出勤奖励计算。</div>
+          <div v-for="c in activeCourses" :key="c.id" class="flex items-center justify-between p-3 border rounded-lg">
+            <div class="flex items-center gap-2">
+              <span class="font-medium">{{ c.name }}</span>
+            </div>
+            <button :class="['relative inline-flex h-6 w-11 items-center rounded-full transition-colors', c.award_enabled?'bg-blue-600':'bg-gray-300']" @click="toggleAwardEnabled(c)">
+              <span :class="['inline-block h-4 w-4 transform rounded-full bg-white transition-transform', c.award_enabled?'translate-x-6':'translate-x-1']"></span>
+            </button>
+          </div>
+          <div v-if="!activeCourses.length" class="empty-state"><p>暂无课程</p></div>
+        </div>
+        <!-- Tab 2: 奖励规则设置 -->
+        <div v-if="awardTab==='rules'" class="modal-body space-y-3">
+          <div class="text-sm text-gray-500 mb-1">仅显示已在「课程参与设置」中开启的课程。请在下方设置签到奖励阶梯。</div>
+          <div v-if="!awardEnabledCourses.length" class="empty-state"><p>暂无参与奖励的课程，请先在「课程参与设置」中开启</p></div>
+          <div v-for="c in awardEnabledCourses" :key="c.id" class="p-3 border rounded-lg">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="font-semibold">{{ c.name }}</span>
+                <span :class="['badge', c._rule && c._rule.enabled?'badge-green':'badge-gray']">{{ c._rule && c._rule.enabled ? '启用' : '未设置' }}</span>
+              </div>
+              <div class="flex gap-1">
+                <template v-if="c._rule">
+                  <button class="btn btn-outline btn-sm" @click="toggleAwardRule(c._rule)">{{ c._rule.enabled?'禁用':'启用' }}</button>
+                  <button class="btn btn-primary btn-sm" @click="editingAward=c._rule; awardFormTiers=JSON.parse(JSON.stringify(c._rule.tiers||[]))">编辑</button>
+                </template>
+                <button v-else class="btn btn-primary btn-sm" @click="createAwardRule(c)">创建规则</button>
+              </div>
+            </div>
+            <div v-if="c._rule && c._rule.tiers && c._rule.tiers.length" class="text-sm text-gray-600">
+              <span v-for="(t,ti) in c._rule.tiers" :key="ti">{{ t.count }}次→{{ t.reward }}元<span v-if="ti < c._rule.tiers.length-1">, </span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 编辑视图：编辑单个规则的阶梯 -->
+      <div v-if="editingAward" class="modal-body space-y-4">
+        <button class="btn btn-outline btn-sm mb-2" @click="editingAward=null">← 返回列表</button>
+        <div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
+          为「{{ editingAward.course_name }}」设置签到奖励阶梯。学员当月累计签到数达到某一级阶梯时，获得该级对应的奖励金额。
+        </div>
+        <div v-for="(tier,idx) in awardFormTiers" :key="idx" class="flex gap-2 items-start">
+          <div class="flex-1">
+            <label>累计签到</label>
+            <input type="number" v-model.number="tier.count" placeholder="10" min="1" />
+          </div>
+          <div class="flex-1 pt-5 text-center">次 →</div>
+          <div class="flex-1">
+            <label>奖励</label>
+            <input type="number" v-model.number="tier.reward" placeholder="100" min="0" />
+          </div>
+          <div class="pt-5 text-center">元</div>
+          <button class="btn btn-danger btn-sm mt-5" @click="awardFormTiers.splice(idx,1)">删</button>
+        </div>
+        <button class="btn btn-outline btn-sm" @click="awardFormTiers.push({count:null,reward:null})">+ 添加阶梯</button>
+      </div>
+      <div class="modal-footer" v-if="editingAward">
+        <button class="btn btn-outline" @click="editingAward=null">返回</button>
+        <button class="btn btn-primary" @click="saveAwardRule">保存规则</button>
+      </div>
+      <div class="modal-footer" v-else>
+        <button class="btn btn-outline" @click="showAwardModal=false">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：确认删除 ========== -->
+  <div class="modal-overlay" v-if="deleteConfirm.show" @click.self="deleteConfirm.show=false">
+    <div class="modal-sheet" style="max-width:400px">
+      <div class="modal-header">
+        <h3 class="font-semibold text-red-600">确认删除</h3>
+        <button class="text-gray-400 text-xl" @click="deleteConfirm.show=false">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-gray-600">{{ deleteConfirm.message }}</p>
+        <p v-if="deleteConfirm.type==='course'" class="text-red-600 text-sm mt-2 font-medium">⚠️ 课程删除后不可恢复！历史报名和签到记录中的课程名称仍正常显示。</p>
+        <p v-else class="text-red-600 text-sm mt-2 font-medium">此操作不可撤销！</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" @click="deleteConfirm.show=false">取消</button>
+        <button class="btn btn-danger" @click="executeDelete">确认删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：确认退费 ========== -->
+  <div class="modal-overlay" v-if="showRefundModal" @click.self="showRefundModal=false">
+    <div class="modal-sheet" style="max-width:480px">
+      <div class="modal-header">
+        <h3 class="font-semibold text-amber-600">确认退费</h3>
+        <button class="text-gray-400 text-xl" @click="showRefundModal=false">&times;</button>
+      </div>
+      <div class="modal-body space-y-3">
+        <div class="bg-gray-50 rounded-lg p-3 text-sm space-y-2">
+          <div class="flex justify-between"><span class="text-gray-500">课程类型</span><span class="font-medium">{{ getCourseNameById(refundingEnrollment?.course_type) }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">总课时（含赠课）</span><span class="font-medium">{{ refundForm.total_lessons }} 节</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">已消耗课时</span><span class="font-medium text-orange-600">{{ refundForm.consumed_lessons }} 节</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">剩余课时</span><span class="font-medium text-teal-600">{{ refundForm.refund_lessons }} 节</span></div>
+          <hr class="border-gray-200" />
+          <div class="flex justify-between"><span class="text-gray-500">总费用</span><span class="font-medium">¥{{ Number(refundForm.total_fee||0).toFixed(0) }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">已消耗金额（FIFO）</span><span class="font-medium text-orange-600">¥{{ Number(refundForm.consumed_fee||0).toFixed(0) }}</span></div>
+          <div class="flex justify-between text-base"><span class="font-semibold text-gray-700">退费金额</span><span class="font-bold text-amber-600">¥{{ Number(refundForm.refund_fee||0).toFixed(0) }}</span></div>
+        </div>
+        <div>
+          <label>实际退费金额（可手动调整）</label>
+          <input type="number" v-model.number="refundForm.refund_fee" class="!text-lg !font-bold !text-amber-600" />
+        </div>
+        <div>
+          <label>备注</label>
+          <textarea v-model="refundForm.note" rows="2" placeholder="退费原因等（选填）"></textarea>
+        </div>
+        <div class="bg-red-50 rounded-lg p-3 text-sm text-red-700">
+          ⚠️ 退费后剩余课时将清零，签到记录保留，学员可重新报名。
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" @click="showRefundModal=false">取消</button>
+        <button class="btn btn-warning" @click="saveRefund">确认退费</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 弹窗：退费详情 ========== -->
+  <div class="modal-overlay" v-if="showRefundDetailModal" @click.self="showRefundDetailModal=false">
+    <div class="modal-sheet" style="max-width:480px">
+      <div class="modal-header">
+        <h3 class="font-semibold text-amber-600">退费详情</h3>
+        <button class="text-gray-400 text-xl" @click="showRefundDetailModal=false">&times;</button>
+      </div>
+      <div class="modal-body space-y-3" v-if="viewingRefund">
+        <div class="bg-gray-50 rounded-lg p-3 text-sm space-y-2">
+          <div class="flex justify-between"><span class="text-gray-500">课程类型</span><span class="font-medium">{{ getCourseNameById(viewingRefund.course_type) }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">退费日期</span><span class="font-medium">{{ viewingRefund.date }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">总费用</span><span class="font-medium">¥{{ Number(viewingRefund.total_fee).toFixed(0) }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">已消耗课时</span><span class="font-medium">{{ viewingRefund.consumed_lessons }} 节</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">已消耗金额（FIFO）</span><span class="font-medium text-orange-600">¥{{ Number(viewingRefund.consumed_fee).toFixed(0) }}</span></div>
+          <hr class="border-gray-200" />
+          <div class="flex justify-between text-base"><span class="font-semibold text-gray-700">实际退款金额</span><span class="font-bold text-amber-600">¥{{ Number(viewingRefund.refund_fee).toFixed(0) }}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">退还课时</span><span class="font-medium">{{ viewingRefund.refund_lessons }} 节</span></div>
+        </div>
+        <div v-if="viewingRefund.note" class="bg-blue-50 rounded-lg p-3 text-sm">
+          <span class="text-blue-800">备注：{{ viewingRefund.note }}</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" @click="revokeRefund">撤回退费</button>
+        <button class="btn btn-outline" @click="showRefundDetailModal=false">关闭</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /#app -->
+
+
+
+<script>
+// ============================================
+// 游泳教练课时管理系统 v2.0 — Vue 3 应用
+// ============================================
+
+// ── Supabase 客户端初始化 ──
+const SUPABASE_URL = 'https://tezmoiwgeyzafhuqxkgj.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlem1vaXdnZXl6YWZodXF4a2dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzc2NTYsImV4cCI6MjA5MzkxMzY1Nn0.QgPnuMKQToIuEIMA1YScNWQvgy9Y5SGz4DQWzwUBkS4';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const { createApp, ref, reactive, computed, watch, onMounted, nextTick } = Vue;
+
+const app = createApp({
+  setup() {
+
+    // ════════════════════════════════
+    //  认证状态
+    // ════════════════════════════════
+    const authState = reactive({ loggedIn: false, showRegister: false, user: null });
+    const authForm = reactive({ email: '', password: '' });
+    const regForm = reactive({ email: '', password: '' });
+    const authLoading = ref(false);
+
+    // ════════════════════════════════
+    //  数据列表
+    // ════════════════════════════════
+    const students = ref([]);
+    const enrollments = ref([]);
+    const records = ref([]);
+    const renewals = ref([]);
+    const courses = ref([]);
+    const awardRules = ref([]);
+    // 课程分类下拉筛选
+    const awardQualifiedFilter = ref('all');
+    const awardNotQualifyingFilter = ref('all');
+    const awardCourseOptions = computed(() => {
+      const set = new Map();
+      for (const rule of awardRules.value) {
+        if (!rule.enabled) continue;
+        const course = courses.value.find(c => !c.deleted && c.award_enabled && c.name === rule.course_name);
+        if (course) set.set(course.id, course.name);
+      }
+      return Array.from(set.entries()).map(([id, name]) => ({ id, name }));
+    });
+    const coachFeeSettings = ref([]);
+    const coachFeeConfigs = ref([]);
+
+    // 赠课教练费设置（Supabase云端持久化 + localStorage回退）
+    const giftFeeSettings = ref({});
+    // 云端数据加载前，先用localStorage作为临时回退
+    (function initGiftFeeSettings() {
+      try {
+        const s = localStorage.getItem('swim_gift_fee');
+        if (s) giftFeeSettings.value = JSON.parse(s);
+      } catch (_) {}
+    })();
+    async function updateGiftFee(key, val) {
+      if (giftFeeLocked.value) { toast('赠课教练费已锁定，请先撤回确定'); return; }
+      const fee = Number(val) || 0;
+      const [studentId, courseType] = key.split('|');
+      // 先更新本地 ref → Vue 即时响应
+      giftFeeSettings.value = { ...giftFeeSettings.value, [key]: fee };
+      // 异步同步 Supabase
+      try {
+        if (fee <= 0) {
+          await sb.from('gift_fee_settings').delete().eq('id', key);
+        } else {
+          await sb.from('gift_fee_settings').upsert({
+            id: key, user_id: uid(), student_id: studentId,
+            course_type: courseType, fee: fee
+          });
+        }
+        // 云端同步成功后，清理旧localStorage数据
+        localStorage.removeItem('swim_gift_fee');
+      } catch (err) { console.warn('同步赠课费用出错:', err); }
+    }
+
+    // 赠课教练费锁定状态
+    const giftFeeLocked = ref(false);
+    async function lockGiftFees() {
+      giftFeeLocked.value = true;
+      try {
+        await sb.from('gift_fee_locks').upsert({
+          month: feeDetailMonth.value, user_id: uid(), locked: true
+        });
+        toast('赠课教练费已锁定');
+      } catch (err) { console.warn('锁定赠课费用出错:', err); }
+    }
+    async function unlockGiftFees() {
+      giftFeeLocked.value = false;
+      try {
+        await sb.from('gift_fee_locks').upsert({
+          month: feeDetailMonth.value, user_id: uid(), locked: false
+        });
+        toast('已撤回锁定');
+      } catch (err) { console.warn('解锁赠课费用出错:', err); }
+    }
+
+    // ════════════════════════════════
+    //  手动结算课程（类似赠课卡片，每个课程独立一张卡片）
+    // ════════════════════════════════
+    // key: courseType|studentId → fee
+    const manualSettlementSettings = ref({});
+    // key: courseType → locked
+    const manualSettlementLocked = ref({});
+    // 手动结算课程列表（按字母序）
+    const manualCourseTypes = computed(() => {
+      return courses.value
+        .filter(c => !c.deleted && c.settlement_type === 'manual')
+        .sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+    });
+    // 按课程分组的签到明细
+    const manualCourseDetails = computed(() => {
+      const m = feeDetailMonth.value;
+      return manualCourseTypes.value.map(c => {
+        const sm = {};
+        records.value
+          .filter(r => {
+            if (!r.date.startsWith(m)) return false;
+            if (r.signin_type === 'gift') return false;
+            const e = findEnrollment(r.enrollment_id);
+            if (!e) return false;
+            return e.course_type === c.id;
+          })
+          .forEach(r => {
+            const e = findEnrollment(r.enrollment_id);
+            const key = r.student_id + '|' + e.course_type;
+            if (!sm[key]) {
+              sm[key] = {
+                studentId: r.student_id,
+                studentName: getStudentName(r.student_id),
+                courseType: c.id,
+                courseName: c.name,
+                count: 0,
+                coachFee: manualSettlementSettings.value[r.student_id + '|' + c.id] || 0
+              };
+            }
+            sm[key].count++;
+          });
+        const rows = Object.values(sm).sort((a, b) => a.studentName.localeCompare(b.studentName, 'zh'));
+        const total = rows.reduce((s, r) => s + r.count * r.coachFee, 0);
+        return { courseType: c.id, courseName: c.name, color: c.color, rows, total };
+      }).filter(c => c.rows.length > 0); // 仅当月有签到记录的课程才显示
+    });
+    const manualCourseTotal = computed(() => manualCourseDetails.value.reduce((s, c) => s + c.total, 0));
+
+    async function updateManualFee(courseType, studentId, val) {
+      const key = studentId + '|' + courseType;
+      if (manualSettlementLocked.value[courseType]) { toast('该课程教练费已锁定，请先撤回确定'); return; }
+      const fee = Number(val) || 0;
+      manualSettlementSettings.value = { ...manualSettlementSettings.value, [key]: fee };
+      try {
+        if (fee <= 0) {
+          await sb.from('manual_settlement_settings').delete().eq('id', key);
+        } else {
+          await sb.from('manual_settlement_settings').upsert({
+            id: key, user_id: uid(), student_id: studentId,
+            course_type: courseType, month: feeDetailMonth.value, fee
+          });
+        }
+      } catch (err) { console.warn('同步手动结算费用出错:', err); }
+    }
+    async function lockManualCourse(courseType) {
+      manualSettlementLocked.value = { ...manualSettlementLocked.value, [courseType]: true };
+      try {
+        await sb.from('manual_settlement_locks').upsert({
+          id: courseType + '|' + feeDetailMonth.value,
+          user_id: uid(), course_type: courseType, month: feeDetailMonth.value, locked: true
+        });
+        toast('已锁定');
+      } catch (err) { console.warn('锁定手动结算出错:', err); }
+    }
+    async function unlockManualCourse(courseType) {
+      manualSettlementLocked.value = { ...manualSettlementLocked.value, [courseType]: false };
+      try {
+        await sb.from('manual_settlement_locks').upsert({
+          id: courseType + '|' + feeDetailMonth.value,
+          user_id: uid(), course_type: courseType, month: feeDetailMonth.value, locked: false
+        });
+        toast('已撤回锁定');
+      } catch (err) { console.warn('解锁手动结算出错:', err); }
+    }
+
+    // 当前feedetail月份对应的配置（编辑用）
+    const feeConfigsForMonth = computed(() =>
+      coachFeeConfigs.value.filter(c => c.month === feeDetailMonth.value)
+    );
+
+    // 按课程+学员聚合明细
+    const feeDetailByCourse = computed(() => {
+      const m = feeDetailMonth.value;
+      const cfgMap = {};
+      coachFeeConfigs.value.filter(c => c.month === m).forEach(c => { cfgMap[c.course_type] = c; });
+
+      const groups = {};
+      records.value
+        .filter(r => {
+          if (!r.date.startsWith(m)) return false;
+          if (r.signin_type === 'gift') return false;
+          // 手动结算课程不进入自动结算明细
+          const e2 = findEnrollment(r.enrollment_id);
+          if (!e2) return false;
+          const c = findCourse(e2.course_type);
+          if (c && c.settlement_type === 'manual') return false;
+          return true;
+        })
+        .forEach(r => {
+          const e = findEnrollment(r.enrollment_id);
+          if (!e) return;
+          const ct = e.course_type;
+          if (!groups[ct]) groups[ct] = { courseType: ct, records: [] };
+          const cfg = cfgMap[ct];
+          const unitPrice = calcFifoPriceForRecord(r);
+          const coachFee = cfg ? (cfg.mode === 'percent' ? Math.round(unitPrice * cfg.value / 100) : cfg.value) : 0;
+          groups[ct].records.push({ ...r, course_type: ct, unitPrice, coachFee });
+        });
+
+      return Object.values(groups).map(g => {
+        // 按学员聚合
+        const sm = {};
+        g.records.forEach(r => {
+          const sid = r.student_id;
+          if (!sm[sid]) {
+            sm[sid] = { studentId: sid, studentName: getStudentName(sid), unitPrice: r.unitPrice, coachFee: r.coachFee, count: 0, total: 0 };
+          }
+          sm[sid].count++;
+          sm[sid].total += r.coachFee;
+        });
+        g.studentRows = Object.values(sm).sort((a, b) => a.studentName.localeCompare(b.studentName, 'zh'));
+        g.subtotal = g.records.reduce((s, r) => s + r.coachFee, 0);
+        g.cfg = cfgMap[g.courseType];
+        return g;
+      });
+    });
+    const feeDetailTotal = computed(() => feeDetailByCourse.value.reduce((s, g) => s + g.subtotal, 0));
+
+    // 明细页各课程汇总映射（供卡片使用）
+    const feeCourseMap = computed(() => {
+      const m = {};
+      feeDetailByCourse.value.forEach(g => { m[g.courseType] = g; });
+      return m;
+    });
+
+    // 赠课课时费明细（按学员+课程聚合，不限课程类型）
+    const giftDetail = computed(() => {
+      const m = feeDetailMonth.value;
+      const sm = {};
+      records.value
+        .filter(r => r.date.startsWith(m) && r.signin_type === 'gift')
+        .forEach(r => {
+          const e = findEnrollment(r.enrollment_id);
+          if (!e) return;
+          const key = r.student_id + '|' + e.course_type;
+          if (!sm[key]) {
+            sm[key] = {
+              studentId: r.student_id,
+              studentName: getStudentName(r.student_id),
+              courseType: e.course_type,
+              courseName: getCourseNameById(e.course_type),
+              count: 0,
+              coachFee: giftFeeSettings.value[key] || 0
+            };
+          }
+          sm[key].count++;
+        });
+      return Object.values(sm).sort((a, b) => a.studentName.localeCompare(b.studentName, 'zh'));
+    });
+    const giftDetailTotal = computed(() => giftDetail.value.reduce((s, r) => s + r.count * r.coachFee, 0));
+
+    // ════════════════════════════════
+    //  导航与页面
+    // ════════════════════════════════
+    const currentPage = ref('dashboard');
+    const menuItems = [
+      { id:'dashboard', name:'概览', icon:'📊' },
+      { id:'signin', name:'签到', icon:'✅' },
+      { id:'students', name:'学生管理', icon:'👥' },
+      { id:'courses', name:'课程管理', icon:'🏊' },
+      { id:'monthly', name:'月度汇总', icon:'📅' },
+      { id:'records', name:'签到记录', icon:'📋' },
+      { id:'enrollments', name:'报名订单', icon:'🧾' },
+    ];
+
+    // ════════════════════════════════
+    //  Toast 提示
+    // ════════════════════════════════
+    const toasts = ref([]);
+    let toastId = 0;
+    function toast(msg, type='success') {
+      const id = ++toastId;
+      toasts.value.push({ id, msg, type });
+      setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, 3000);
+    }
+    function removeToast(i) { toasts.value.splice(i, 1); }
+
+    // ════════════════════════════════
+    //  工具函数
+    // ════════════════════════════════
+    function genId() { return crypto.randomUUID(); }
+    function today() { return new Date().toISOString().slice(0,10); }
+    function currentMonth() { return today().slice(0,7); }
+    function uid() { return authState.user?.id; }
+
+    // 查找辅助函数
+    function findStudent(id) { return students.value.find(s => s.id === id); }
+    function findEnrollment(id) { return enrollments.value.find(e => e.id === id); }
+    function findCourse(id) { return courses.value.find(c => c.id === id); }
+    function getStudentName(studentId) { return findStudent(studentId)?.name ?? '(未知)'; }
+    function getStudentNameByEnrollment(enrollmentId) {
+      const e = findEnrollment(enrollmentId);
+      if (!e) return '(未知)';
+      return getStudentName(e.student_id);
+    }
+    function getCourseName(enrollmentId) {
+      const e = findEnrollment(enrollmentId);
+      if (!e) return '-';
+      return getCourseNameById(e.course_type);
+    }
+    function getCourseColor(enrollmentId) {
+      const e = findEnrollment(enrollmentId);
+      if (!e) return '#666';
+      return getCourseColorById(e.course_type);
+    }
+    function getCourseNameById(courseTypeId) { return findCourse(courseTypeId)?.name ?? courseTypeId; }
+    function getCourseColorById(courseTypeId) { return findCourse(courseTypeId)?.color ?? '#666'; }
+    function isPresetCourse(id) { return ['long','junior','private','trial'].includes(id); }
+    const activeCourses = computed(() => courses.value.filter(c => !c.deleted));
+    function getPriceByEnrollmentId(enrollmentId) { return findEnrollment(enrollmentId)?.price ?? 0; }
+
+    function getEnrollmentsOfStudent(studentId) {
+      return enrollments.value.filter(e => e.student_id === studentId && e.active !== false);
+    }
+
+    function getDistinctEnrollmentsOfStudent(studentId) {
+      const seen = new Set();
+      return enrollments.value.filter(e => {
+        if (e.student_id !== studentId || e.active === false) return false;
+        if (seen.has(e.course_type)) return false;
+        seen.add(e.course_type);
+        return true;
+      });
+    }
+
+    // FIFO 课单价计算
+    function getSigninPrice(enrollmentId, signinIndex) {
+      const enr = findEnrollment(enrollmentId);
+      if (!enr) return 0;
+      const renList = renewals.value
+        .filter(r => r.enrollment_id === enrollmentId)
+        .sort((a,b) => (a.date>b.date?1:(a.date<b.date?-1:0)));
+      let remaining = signinIndex;
+      for (const r of renList) {
+        if (remaining < r.lessons) {
+          return r.price || Math.round(r.fee/r.lessons);
+        }
+        remaining -= r.lessons;
+      }
+      return enr.price || 0;
+    }
+
+    // 为某条签到记录计算 FIFO 单价（需要找到该学生+该课程的第几次）
+    function calcFifoPriceForRecord(record) {
+      if (!record || !record.enrollment_id) return 0;
+      if (record.signin_type === 'gift') return 0;
+      // 只计算正常签到（排除赠课）
+      const sameEnrRecords = records.value
+        .filter(r => r.enrollment_id === record.enrollment_id && r.date <= record.date && r.signin_type !== 'gift')
+        .sort((a,b) => a.date.localeCompare(b.date));
+      const idx = sameEnrRecords.findIndex(r => r.id === record.id);
+      return getSigninPrice(record.enrollment_id, Math.max(0, idx));
+    }
+
+
+    // ════════════════════════════════
+    //  认证操作
+    // ════════════════════════════════
+    async function handleLogin() {
+      if(!authForm.email||!authForm.password){toast('请输入邮箱和密码','error');return;}
+      authLoading.value = true;
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({
+          email: authForm.email, password: authForm.password
+        });
+        if(error){toast(error.message,'error');return;}
+        authState.loggedIn = true; authState.user = data.user;
+        toast('登录成功！');
+        await loadAllData();
+      } finally { authLoading.value = false; }
+    }
+
+    async function handleRegister() {
+      if(!regForm.email||!regForm.password||regForm.password.length<6){
+        toast('邮箱不能为空且密码至少6位','error');return;
+      }
+      authLoading.value = true;
+      try {
+        const { data, error } = await sb.auth.signUp({
+          email: regForm.email, password: regForm.password
+        });
+        if(error){toast(error.message,'error');return;}
+        toast('注册成功！请查收验证邮件后登录');
+        authState.showRegister = false;
+      } finally { authLoading.value = false; }
+    }
+
+    async function handleLogout() {
+      await sb.auth.signOut();
+      authState.loggedIn = false; authState.user = null;
+      students.value=[]; enrollments.value=[]; records.value=[]; renewals.value=[];
+      courses.value=[]; awardRules.value=[]; coachFeeSettings.value=[]; coachFeeConfigs.value=[];
+    }
+
+    // 云同步状态
+    const syncing = ref(false);
+    async function syncData() {
+      if(syncing.value) return;
+      syncing.value = true;
+      try { await loadAllData(); toast('数据已同步','success'); }
+      catch(e){ toast('同步失败:'+e.message,'error'); }
+      finally{ setTimeout(()=>syncing.value=false, 500); }
+    }
+
+    async function checkSession() {
+      const { data:{user} } = await sb.auth.getUser();
+      if(user){
+        authState.loggedIn = true; authState.user = user;
+        updateHeaderDate();
+        await loadAllData();
+      }
+    }
+
+    // ════════════════════════════════
+    //  数据加载
+    // ════════════════════════════════
+    async function loadAllData() {
+      try {
+        const [st,en,rec,ren,cou,aw,fes,fec,gfs,gfl,mss,msl] = await Promise.all([
+          sb.from('students').select('*').eq('user_id', uid()),
+          sb.from('enrollments').select('*').eq('user_id', uid()),
+          sb.from('records').select('*').eq('user_id', uid()),
+          sb.from('renew_records').select('*').eq('user_id', uid()),
+          sb.from('courses').select('*').eq('user_id', uid()),
+          sb.from('award_rules').select('*').eq('user_id', uid()),
+          sb.from('coach_fee_settings').select('*').eq('user_id', uid()),
+          sb.from('coach_fee_configs').select('*').eq('user_id', uid()),
+          sb.from('gift_fee_settings').select('*').eq('user_id', uid()),
+          sb.from('gift_fee_locks').select('*').eq('user_id', uid()),
+          sb.from('manual_settlement_settings').select('*').eq('user_id', uid()),
+          sb.from('manual_settlement_locks').select('*').eq('user_id', uid()),
+        ]);
+        students.value = st.data || [];
+        enrollments.value = en.data || [];
+        records.value = rec.data || [];
+        renewals.value = ren.data || [];
+        courses.value = cou.data || [];
+        awardRules.value = aw.data || [];
+        coachFeeSettings.value = fes.data || [];
+        coachFeeConfigs.value = fec.data || [];
+
+        // 赠课教练费：云端优先，本地无云端数据时自动迁移
+        const gfsData = gfs.data || [];
+        if (gfsData.length > 0) {
+          const gfsMap = {};
+          gfsData.forEach(r => { gfsMap[r.student_id + '|' + r.course_type] = r.fee; });
+          giftFeeSettings.value = gfsMap;
+          localStorage.removeItem('swim_gift_fee'); // 云端数据覆盖后清理本地
+        } else if (Object.keys(giftFeeSettings.value).length > 0) {
+          // 本地有数据但云端没有 → 自动迁移到云端
+          const rows = Object.entries(giftFeeSettings.value)
+            .filter(([_, fee]) => fee > 0)
+            .map(([key, fee]) => {
+              const [studentId, courseType] = key.split('|');
+              return { id: key, user_id: uid(), student_id: studentId, course_type: courseType, fee };
+            });
+          if (rows.length) {
+            await sb.from('gift_fee_settings').upsert(rows);
+            localStorage.removeItem('swim_gift_fee'); // 迁移完成后清理本地
+          }
+        }
+
+        // 赠课锁定状态
+        const gflData = gfl.data || [];
+        const lock = gflData.find(r => r.month === feeDetailMonth.value);
+        giftFeeLocked.value = lock ? lock.locked : false;
+
+        // 手动结算课程教练费设置
+        const mssData = mss.data || [];
+        if (mssData.length > 0) {
+          const mssMap = {};
+          mssData.forEach(r => {
+            mssMap[r.student_id + '|' + r.course_type] = r.fee;
+          });
+          manualSettlementSettings.value = mssMap;
+        }
+        // 手动结算课程锁定状态（按月+课程）
+        const mslData = msl.data || [];
+        const manualLockState = {};
+        mslData.forEach(r => {
+          if (r.month === feeDetailMonth.value) {
+            manualLockState[r.course_type] = r.locked;
+          }
+        });
+        manualSettlementLocked.value = manualLockState;
+
+
+        // 如果没有预设课程则插入
+        if(courses.value.length===0){
+          await initDefaultCourses();
+        }
+
+        console.log('[v2] 数据加载完成:',{
+          students: students.value.length,
+          enrollments: enrollments.value.length,
+          records: records.value.length,
+          renewals: renewals.value.length,
+          courses: courses.value.length,
+        });
+
+      } catch(err){console.error('[v2] 数据加载错误:',err);toast('加载数据失败: '+err.message,'error');}
+    }
+
+    async function initDefaultCourses(){
+      const defaults = [
+        {id:'long',name:'长训课',color:'#1d4ed8',settlement_type:'auto'},
+        {id:'junior',name:'初级班',color:'#059669',settlement_type:'auto'},
+        {id:'private',name:'私教课',color:'#7c3aed',settlement_type:'auto'},
+        {id:'trial',name:'体验课',color:'#f97316',settlement_type:'manual'},
+      ];
+      for(const d of defaults){
+        await sb.from('courses').insert({...d,user_id:uid()});
+      }
+      const {data} = await sb.from('courses').select('*').eq('user_id',uid());
+      courses.value = data || [];
+    }
+
+
+    // ════════════════════════════════
+    //  仪表盘统计
+    // ════════════════════════════════
+    // 日期工具 & 仪表盘数据
+    // ════════════════════════════════
+    const currentYear = ref(new Date().getFullYear());
+    const todayStr = ref('');
+    const headerDate = ref('');
+    function updateHeaderDate() {
+      const d = new Date();
+      const wks = ['日','一','二','三','四','五','六'];
+      todayStr.value = `${d.getMonth()+1}月${d.getDate()}日`;
+      headerDate.value = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 星期${wks[d.getDay()]}`;
+    }
+
+    // ════════════════════════════════
+    //  签到页面：按课程分组
+    // ════════════════════════════════
+    const signinDate = ref(today());
+    const showSigninDatePicker = ref(false);
+    const signinDateLabel = computed(()=>{
+      if(signinDate.value===today()) return '今天';
+      const p=signinDate.value.split('-');
+      return `${p[0]}年${parseInt(p[1])}月${parseInt(p[2])}日`;
+    });
+    // 签到页查询模式：'day' 或 'YYYY-MM'
+    const signinViewMode = ref('day');
+    // 可选月份列表（从签到记录中提取，始终包含当月）
+    const signinMonthOptions = computed(()=>{
+      const now = today().slice(0,7);
+      const months = new Set([now]);
+      records.value.forEach(r=>months.add(r.date.slice(0,7)));
+      const sorted = Array.from(months).sort().reverse();
+      return sorted.filter(m=>m!==now); // 不包含当月，避免重复
+    });
+    // 按月模式：当月每天签到统计
+    const monthSigninDays = computed(()=>{
+      const m = signinViewMode.value; // 'YYYY-MM'
+      const daysInMonth = new Date(parseInt(m.slice(0,4)), parseInt(m.slice(5,7)), 0).getDate();
+      const dayMap = {};
+      records.value.filter(r=>r.date.startsWith(m)).forEach(r=>{
+        dayMap[r.date] = (dayMap[r.date]||0)+1;
+      });
+      const days = [];
+      for(let d=1;d<=daysInMonth;d++){
+        const date = m+'-'+String(d).padStart(2,'0');
+        days.push({ day:d, date, count:dayMap[date]||0 });
+      }
+      return days;
+    });
+    function goToSigninDay(date){
+      signinDate.value = date;
+      signinViewMode.value = 'day';
+    }
+
+    // 按课程分组：每个课程下的学员（含剩余课时、今日是否已签到）
+    // 课程卡片数据（统计每门课程的学员数）
+    const signinCourseCards = computed(()=>{
+      return activeCourses.value.map(cou=>{
+        const enrs = enrollments.value.filter(e=>
+          e.course_type===cou.id && e.active!==false
+        );
+        const stuMap = new Map();
+        const activeStuIds = new Set();  // 有剩余课时的学员
+        for(const enr of enrs){
+          if(!stuMap.has(enr.student_id)){
+            const stu = students.value.find(s=>s.id===enr.student_id);
+            if(stu) stuMap.set(enr.student_id, {id:stu.id,name:stu.name,phone:stu.phone,courseId:cou.id,enrollmentId:enr.id});
+          }
+          // 计算该报名的剩余课时
+          const usedCount = records.value.filter(r=> r.student_id===enr.student_id && r.enrollment_id===enr.id).length;
+          const rem = Math.max(0, (enr.lessons||0) - usedCount + (enr.gift_lessons||0));
+          if(rem > 0){
+            activeStuIds.add(enr.student_id);
+            // 确保使用有剩余课时的 enrollmentId
+            if(stuMap.has(enr.student_id)) stuMap.get(enr.student_id).enrollmentId = enr.id;
+          }
+        }
+        return {
+          courseId: cou.id,
+          courseName: cou.name,
+          color: cou.color||'#0ea5e9',
+          icon: cou.id==='long'?'🏊':cou.id==='junior'?'🏅':cou.id==='private'?'👤':'📌',
+          studentCount: activeStuIds.size,
+          students: [...stuMap.values()]
+        };
+      });
+    });
+
+    // 弹窗状态
+    const signinModalOpen = ref(false);
+    const signinModalCourse = ref(null);
+    const signinSearch = ref('');
+    const signinSelectedIds = ref([]);
+    const signinTypeSelections = reactive({}); // 持久化签到类型选择 (student_id → 'normal'|'gift')
+
+    // 打开弹窗
+    function openSigninModal(cc){
+      signinModalCourse.value = cc;
+      signinSearch.value = '';
+      signinSelectedIds.value = [];
+      signinModalOpen.value = true;
+      setTimeout(()=>{
+        const el = document.querySelector('.signin-search-input');
+        if(el) el.focus();
+      },100);
+    }
+    function closeSigninModal(){
+      signinModalOpen.value = false;
+      signinModalCourse.value = null;
+      signinSelectedIds.value = [];
+      Object.keys(signinTypeSelections).forEach(k=>delete signinTypeSelections[k]);
+    }
+
+    // 弹窗内学员列表（含搜索过滤 + 今日签到次数 + 剩余课时过滤 + 签到类型）
+    // 一个学员可能有多笔同一课程报名（正常+赠课分开报），汇总所有报名的剩余课时
+    const signinModalStudents = computed(()=>{
+      const cc = signinModalCourse.value;
+      if(!cc) return [];
+      const dateVal = signinDate.value;
+      let list = cc.students.map(stu=>{
+        const todayCount = records.value.filter(r=>
+          r.student_id===stu.id && r.date===dateVal
+        ).length;
+        // 查找学员在该课程下的所有有效报名
+        const allEnrs = enrollments.value.filter(e=>
+          e.student_id===stu.id && e.course_type===cc.courseId && e.active!==false
+        );
+        let normalRemaining = 0, giftRemaining = 0;
+        let normalEnrId = null, giftEnrId = null;
+        for(const enr of allEnrs){
+          const normalUsed = records.value.filter(r=>
+            r.student_id===stu.id && r.enrollment_id===enr.id && r.signin_type==='normal'
+          ).length;
+          const giftUsed = records.value.filter(r=>
+            r.student_id===stu.id && r.enrollment_id===enr.id && r.signin_type==='gift'
+          ).length;
+          const nRem = Math.max(0, (enr.lessons||0) - normalUsed);
+          const gRem = Math.max(0, (enr.gift_lessons||0) - giftUsed);
+          if(nRem > 0){ normalRemaining += nRem; normalEnrId = enr.id; }
+          if(gRem > 0){ giftRemaining += gRem; giftEnrId = enr.id; }
+        }
+        const remaining = normalRemaining + giftRemaining;
+        let selectedSigninType = signinTypeSelections[stu.id];
+        // 未选择时自动选：正常用完则默认赠课，否则默认正常
+        if(!selectedSigninType){
+          if(normalRemaining <= 0 && giftRemaining > 0) selectedSigninType = 'gift';
+          else selectedSigninType = 'normal';
+        }
+        // 如果所选类型已用完，切换另一种
+        if(selectedSigninType==='normal' && normalRemaining<=0 && giftRemaining>0) selectedSigninType = 'gift';
+        if(selectedSigninType==='gift' && giftRemaining<=0 && normalRemaining>0) selectedSigninType = 'normal';
+        signinTypeSelections[stu.id] = selectedSigninType;
+        return {...stu, todayCount, remaining, normalRemaining, giftRemaining,
+          selectedSigninType, normalEnrId, giftEnrId};
+      });
+      if(signinSearch.value.trim()){
+        const kw = signinSearch.value.trim().toLowerCase();
+        list = list.filter(s=>s.name.toLowerCase().includes(kw));
+      }
+      list = list.filter(s => s.remaining === null || s.remaining > 0);
+      return list;
+    });
+
+    const signinModalTotal = computed(()=>{
+      return signinModalCourse.value ? signinModalCourse.value.studentCount : 0;
+    });
+
+    // 全选状态
+    const signinIsAllSelected = computed(()=>{
+      const list = signinModalStudents.value;
+      if(!list.length) return false;
+      return list.length === signinSelectedIds.value.length;
+    });
+
+    function toggleSigninSelect(stuId){
+      const idx = signinSelectedIds.value.indexOf(stuId);
+      if(idx>=0) signinSelectedIds.value.splice(idx,1);
+      else signinSelectedIds.value.push(stuId);
+    }
+    function signinIsSelected(stuId){
+      return signinSelectedIds.value.includes(stuId);
+    }
+    function signinToggleAll(){
+      if(signinIsAllSelected.value){
+        signinSelectedIds.value = [];
+      } else {
+        signinSelectedIds.value = signinModalStudents.value.map(s=>s.id);
+      }
+    }
+
+    // 搜索高亮
+    function highlightName(name){
+      const kw = signinSearch.value.trim();
+      if(!kw) return name;
+      const idx = name.toLowerCase().indexOf(kw.toLowerCase());
+      if(idx<0) return name;
+      return name.substring(0,idx) + '<span style="color:#ef4444;font-weight:700;">' + name.substring(idx,idx+kw.length) + '</span>' + name.substring(idx+kw.length);
+    }
+
+    // 快速签到（支持多次签到）
+    async function quickSignin(stu){
+      if(stu.remaining!==null && stu.remaining<=0){ toast('该学员剩余课时不足，无法签到','error'); return; }
+      const signinType = signinTypeSelections[stu.id] || 'normal';
+      // 根据签到类型找到对应的报名ID（多报名汇总场景）
+      const enrId = signinType==='gift' ? (stu.giftEnrId||stu.normalEnrId||null) : (stu.normalEnrId||stu.giftEnrId||null);
+      try {
+        const {error} = await sb.from('records').insert([{
+          id:genId(), student_id:stu.id,
+          enrollment_id:enrId, user_id:uid(),
+          date:signinDate.value, time:'',
+          signin_type: signinType
+        }]);
+        if(error) throw error;
+        toast('✅ '+stu.name+' 签到成功','success');
+        await loadAllData();
+      } catch(err){ toast('签到失败:'+err.message,'error'); }
+    }
+
+    // 批量签到
+    async function batchSignin(){
+      const ids = [...signinSelectedIds.value];
+      if(!ids.length) return;
+      // 检查剩余课时
+      const blocked = ids.filter(stuId=>{
+        const stu = signinModalStudents.value.find(s=>s.id===stuId);
+        return stu && stu.remaining!==null && stu.remaining<=0;
+      });
+      if(blocked.length){
+        const names = blocked.map(id=>signinModalStudents.value.find(s=>s.id===id)?.name||'未知').join('、');
+        toast(names+' 剩余课时不足，无法签到','error'); return;
+      }
+      try {
+        const rows = ids.map(stuId=>{
+          const stu = signinModalStudents.value.find(s=>s.id===stuId);
+          const signinType = signinTypeSelections[stuId] || 'normal';
+          const enrId = signinType==='gift' ? (stu?.giftEnrId||stu?.normalEnrId||null) : (stu?.normalEnrId||stu?.giftEnrId||null);
+          return {
+            id:genId(), student_id:stuId,
+            enrollment_id:enrId, user_id:uid(),
+            date:signinDate.value, time:'',
+            signin_type: signinType
+          };
+        });
+        const {error} = await sb.from('records').insert(rows);
+        if(error) throw error;
+        toast('✅ 批量签到 '+ids.length+' 人成功','success');
+        signinSelectedIds.value = [];
+        await loadAllData();
+      } catch(err){ toast('批量签到失败:'+err.message,'error'); }
+    }
+
+    const dashStats = computed(()=>{
+      const m = currentMonth();
+      const y = String(currentYear.value);
+      const monthRecs = records.value.filter(r=>r.date.startsWith(m));
+      const yearRecs = records.value.filter(r=>r.date.startsWith(y));
+      let monthIncome=0, monthSignins=0;
+      for(const r of monthRecs){
+        monthSignins++;
+        monthIncome += calcFifoPriceForRecord(r);
+      }
+      // 累计课时 = 所有签到次数
+      const totalLessons = records.value.length;
+      // 按月份分组签到记录
+      const recsByMonth = {};
+      for(const r of yearRecs){
+        const mon = r.date.substring(0,7);
+        if(!recsByMonth[mon]) recsByMonth[mon] = [];
+        recsByMonth[mon].push(r);
+      }
+      // 年度耗课金额 = 按月度汇总逻辑累加全年 FIFO（与 calcSummary 的 totalConsumed 一致）
+      let yearConsume = 0;
+      for(const r of yearRecs) yearConsume += calcFifoPriceForRecord(r);
+      // 年度课时费收入 = 按月度汇总逻辑累加全年 coachFeeConfigs（与 calcSummary 的 totalIncome 一致）
+      let yearCoachIncome = 0;
+      for(const [mon, recs] of Object.entries(recsByMonth)){
+        const cfgMap = {};
+        coachFeeConfigs.value.filter(c => c.month === mon).forEach(c => { cfgMap[c.course_type] = c; });
+        for(const r of recs){
+          const e = findEnrollment(r.enrollment_id);
+          if(!e) continue;
+          const ct = e.course_type;
+          const cfg = cfgMap[ct];
+          if(cfg && cfg.value){
+            if(cfg.mode === 'percent'){
+              yearCoachIncome += Math.round(calcFifoPriceForRecord(r) * cfg.value / 100);
+            } else {
+              yearCoachIncome += cfg.value;
+            }
+          }
+        }
+      }
+      const todayRecs = records.value.filter(r=>r.date===today());
+      return {
+        monthIncome,
+        monthSignins,
+        totalStudents: students.value.length,
+        lowRemainingCount: enrollments.value.filter((e)=>(e.remaining||0)<=3&&e.active!==false).length,
+        todaySignins: todayRecs.length,
+        totalLessons,
+        yearConsume,
+        yearCoachIncome
+      };
+    });
+
+    // 今日签到列表
+    const todaySigninList = computed(()=>{
+      const t = signinDate.value;  // 跟随签到页日期选择
+      return records.value.filter(r=>r.date===t).map(r=>{
+        const stu = students.value.find(s=>s.id===r.student_id);
+        const en = enrollments.value.find(e=>e.id===r.enrollment_id);
+        const cou = en ? courses.value.find(c=>c.id===en.course_type) : null;
+        return { ...r, studentName: stu?.name||'未知', courseName: cou?.name||'未知课程', courseType: en?.course_type || '' };
+      });
+    });
+
+    // 今日签到按课程分组
+    const todaySigninByCourse = computed(()=>{
+      const list = todaySigninList.value;
+      const groups = {};
+      for(const s of list){
+        const key = s.courseType || s.enrollment_id || 'unknown';
+        if(!groups[key]) groups[key] = { courseName: s.courseName, courseColor: getCourseColorById(s.courseType||''), records: [] };
+        groups[key].records.push(s);
+      }
+      return Object.values(groups).sort((a,b)=>b.records.length - a.records.length);
+    });
+
+    // 今日签到完整日期标签
+    const todaySigninDateLabel = computed(()=>{
+      const p = signinDate.value.split('-');
+      return `${p[0]}年${parseInt(p[1])}月${parseInt(p[2])}日`;
+    });
+
+    // 今日已签到批量操作
+    const todaySigninSelectedIds = ref([]);
+    function toggleTodaySigninSelect(id){
+      const i = todaySigninSelectedIds.value.indexOf(id);
+      if(i>=0) todaySigninSelectedIds.value.splice(i,1);
+      else todaySigninSelectedIds.value.push(id);
+    }
+    function courseAllSelected(g){ return g.records.length && g.records.every(s=>todaySigninSelectedIds.value.includes(s.id)); }
+    function toggleCourseSelect(g){
+      const allSelected = courseAllSelected(g);
+      const ids = g.records.map(s=>s.id);
+      if(allSelected){
+        todaySigninSelectedIds.value = todaySigninSelectedIds.value.filter(x=>!ids.includes(x));
+      } else {
+        for(const id of ids){ if(!todaySigninSelectedIds.value.includes(id)) todaySigninSelectedIds.value.push(id); }
+      }
+    }
+    function batchEditSigninDate(){
+      if(!todaySigninSelectedIds.value.length) return;
+      const d = prompt('请输入新日期 (YYYY-MM-DD)：', signinDate.value);
+      if(!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)){ toast('日期格式错误','error'); return; }
+      const ids = [...todaySigninSelectedIds.value];
+      sb.from('records').update({ date: d }).in('id', ids).then(({error})=>{
+        if(error){ toast('修改失败:'+error.message,'error'); return; }
+        toast('已修改 '+ids.length+' 条签到日期为 '+d,'success');
+        todaySigninSelectedIds.value = [];
+        loadAllData();
+      });
+    }
+    async function batchDeleteSignin(){
+      if(!todaySigninSelectedIds.value.length) return;
+      if(!confirm('确定删除选中的 '+todaySigninSelectedIds.value.length+' 条签到记录？此操作不可恢复！')) return;
+      const ids = [...todaySigninSelectedIds.value];
+      try {
+        const {error} = await sb.from('records').delete().in('id', ids);
+        if(error) throw error;
+        toast('已删除 '+ids.length+' 条签到记录','success');
+        todaySigninSelectedIds.value = [];
+        await loadAllData();
+      } catch(err){ toast('删除失败:'+err.message,'error'); }
+    }
+
+    // 本月出勤奖励
+    const monthAwardList = computed(()=>{
+      const m = currentMonth();
+      const result = [];
+
+      // 获取当月非赠课签到记录
+      const monthRecs = records.value.filter(r => r.date.startsWith(m) && r.signin_type !== 'gift');
+
+      // 按学员+课程类型统计签到次数
+      const counts = {}; // key: "studentId|courseType" → { count, studentId, courseType, enrollmentId }
+      for (const r of monthRecs) {
+        const en = enrollments.value.find(e => e.id === r.enrollment_id);
+        if (!en) continue;
+        const key = r.student_id + '|' + en.course_type;
+        if (!counts[key]) counts[key] = { count: 0, studentId: r.student_id, courseType: en.course_type };
+        counts[key].count++;
+      }
+
+      // 逐条规则匹配（仅 award_enabled 课程）
+      for (const rule of awardRules.value) {
+        if (!rule.enabled || !rule.tiers || !rule.tiers.length) continue;
+        const course = courses.value.find(c => !c.deleted && c.award_enabled && c.name === rule.course_name);
+        if (!course) continue;
+
+        const tiers = [...rule.tiers].sort((a, b) => b.count - a.count);
+
+        for (const [key, data] of Object.entries(counts)) {
+          if (data.courseType !== course.id) continue;
+          const student = students.value.find(s => s.id === data.studentId);
+          // 取最高达标阶梯
+          for (const tier of tiers) {
+            if (data.count >= tier.count) {
+              result.push({
+                studentId: data.studentId,
+                studentName: student ? student.name : data.studentId,
+                courseType: course.id,
+                courseName: rule.course_name,
+                count: data.count,
+                reward: tier.reward,
+                tierCount: tier.count
+              });
+              break;
+            }
+          }
+        }
+      }
+
+      return result;
+    });
+
+    // 本月未达标学员（有签到但未达到奖励最低阶梯的学员）
+    const monthNotQualifyingList = computed(()=>{
+      const m = currentMonth();
+      const result = [];
+
+      // 收集所有启用的规则及其最低阶梯要求（仅 award_enabled 课程）
+      const rulesMap = {}; // courseId → { minCount, courseName }
+      for (const rule of awardRules.value) {
+        if (!rule.enabled || !rule.tiers || !rule.tiers.length) continue;
+        const course = courses.value.find(c => !c.deleted && c.award_enabled && c.name === rule.course_name);
+        if (!course) continue;
+        const minTier = rule.tiers.reduce((min, t) => t.count < min.count ? t : min, rule.tiers[0]);
+        rulesMap[course.id] = { minCount: minTier.count, courseName: rule.course_name };
+      }
+      if (!Object.keys(rulesMap).length) return result;
+
+      // 当月签到（含赠课），按学员+课程统计
+      const monthRecs = records.value.filter(r => r.date.startsWith(m));
+      const counts = {};
+      for (const r of monthRecs) {
+        const en = enrollments.value.find(e => e.id === r.enrollment_id);
+        if (!en) continue;
+        const key = r.student_id + '|' + en.course_type;
+        if (!counts[key]) counts[key] = { count: 0, studentId: r.student_id, courseType: en.course_type };
+        counts[key].count++;
+      }
+
+      // 达标学员ID集合（排除）
+      const qualifiedSet = new Set(monthAwardList.value.map(a => a.studentId + '|' + a.courseType));
+
+      for (const [key, data] of Object.entries(counts)) {
+        if (qualifiedSet.has(key)) continue;
+        const rule = rulesMap[data.courseType];
+        if (!rule) continue;
+        const student = students.value.find(s => s.id === data.studentId);
+        result.push({
+          studentId: data.studentId,
+          studentName: student ? student.name : data.studentId,
+          courseType: data.courseType,
+          courseName: rule.courseName,
+          count: data.count,
+          required: rule.minCount,
+          gap: rule.minCount - data.count
+        });
+      }
+
+      // 按签到次数降序排列
+      result.sort((a, b) => b.count - a.count || a.studentName.localeCompare(b.studentName, 'zh'));
+      return result;
+    });
+
+    // 筛选后的达标列表
+    const filteredAwardList = computed(() => {
+      if (awardQualifiedFilter.value === 'all') return monthAwardList.value;
+      return monthAwardList.value.filter(a => a.courseType === awardQualifiedFilter.value);
+    });
+    // 筛选后的未达标列表
+    const filteredNotQualifyingList = computed(() => {
+      if (awardNotQualifyingFilter.value === 'all') return monthNotQualifyingList.value;
+      return monthNotQualifyingList.value.filter(a => a.courseType === awardNotQualifyingFilter.value);
+    });
+
+    // 本月各课程出勤统计
+    const dashCourseStats = computed(()=>{
+      const m = currentMonth();
+      const monthRecs = records.value.filter(r=>r.date.startsWith(m));
+      const map = {};
+      for(const r of monthRecs){
+        const en = enrollments.value.find(e=>e.id===r.enrollment_id);
+        if(!en) continue;
+        const cou = courses.value.find(c=>c.id===en.course_type);
+        const name = cou?.name || '未知课程';
+        const color = cou?.color || '#6b7280';
+        map[name] = (map[name]||0) + 1;
+        if(!map[name+'_c']) map[name+'_c'] = color;
+      }
+      return Object.keys(map).filter(k=>!k.endsWith('_c')).map(k=>({ name:k, count:map[k], color:map[k+'_c'] }));
+    });
+
+
+    // ════════════════════════════════
+    //  学生管理 CRUD
+    // ════════════════════════════════
+    const showStudentModal = ref(false);
+    const editingStudent = ref(null);
+    const studentForm = reactive({ name:'', phone:'', remark:'', gender:'' });
+    const stuSearchText = ref('');
+    const stuFilterCourse = ref('');
+    const filteredStudents = ref([]);
+
+    function openStudentModal(s=null){
+      if(s){
+        editingStudent.value = s;
+        Object.assign(studentForm,{name:s.name,phone:s.phone||'',remark:s.remark||'',gender:s.gender||''});
+      } else {
+        editingStudent.value = null;
+        Object.assign(studentForm,{name:'',phone:'',remark:'',gender:''});
+      }
+      showStudentModal.value = true;
+    }
+
+    async function saveStudent(){
+      if(!studentForm.name.trim()){toast('姓名必填','error');return;}
+      try {
+        if(editingStudent.value){
+          await sb.from('students').update({
+            name: studentForm.name.trim(), phone: studentForm.phone.trim(),
+            remark: studentForm.remark.trim(), gender: studentForm.gender || null
+          }).eq('id', editingStudent.value.id);
+          toast('修改成功');
+        } else {
+          const {error} = await sb.from('students').insert([{
+            id:genId(), user_id:uid(), name:studentForm.name.trim(),
+            phone:studentForm.phone.trim(), remark:studentForm.remark.trim(),
+            gender: studentForm.gender || null
+          }]);
+          if(error) throw error;
+          toast('新增成功');
+        }
+        showStudentModal.value = false;
+        await loadAllData();
+      } catch(err){toast('保存失败:'+err.message,'error');}
+    }
+
+    function filterStudents(){
+      let list = students.value;
+      if(stuSearchText.value){
+        const q = stuSearchText.value.toLowerCase();
+        list = list.filter(s => (s.name+s.phone+s.remark).toLowerCase().includes(q));
+      }
+      if(stuFilterCourse.value){
+        list = list.filter(s =>
+          enrollments.value.some(e => e.student_id===s.id && e.course_type===stuFilterCourse.value)
+        );
+      }
+      filteredStudents.value = list;
+    }
+
+    // 监听变化自动过滤
+    watch([students, stuSearchText, stuFilterCourse], filterStudents, {immediate:true});
+
+    // ===== 学员详情页 =====
+    const detailStudent = ref(null);
+    const detailRecordMonth = ref('');
+    const detailOrderMonth = ref('');
+
+    function showStudentDetail(s) {
+      detailStudent.value = s;
+      detailRecordMonth.value = '';
+      detailOrderMonth.value = '';
+      currentPage.value = 'student-detail';
+    }
+
+    function formatTime(t) {
+      if (!t) return '';
+      try { return new Date(t).toLocaleDateString('zh-CN'); } catch(e) { return t.slice(0,10); }
+    }
+
+    function detailRemaining(enrollmentId) {
+      const e = findEnrollment(enrollmentId);
+      if (!e) return 0;
+      const count = records.value.filter(r => r.student_id === detailStudent.value?.id && r.enrollment_id === enrollmentId).length;
+      return Math.max(0, (e.lessons||0) + (e.gift_lessons||0) - count);
+    }
+
+    const detailEnrollments = computed(() => {
+      if (!detailStudent.value) return [];
+      return enrollments.value.filter(e => e.student_id === detailStudent.value.id && e.active !== false && e.status !== 'refunded');
+    });
+
+    const detailCourseTypeCount = computed(() => {
+      if (!detailStudent.value) return 0;
+      const types = detailEnrollments.value.map(e => e.course_type);
+      return new Set(types).size;
+    });
+
+    const detailRecords = computed(() => {
+      if (!detailStudent.value) return [];
+      return records.value.filter(r => r.student_id === detailStudent.value.id).sort((a,b) => (b.date+a.time).localeCompare(a.date+b.time));
+    });
+
+    const detailFilteredRecords = computed(() => {
+      let list = detailRecords.value;
+      if (detailRecordMonth.value) {
+        list = list.filter(r => r.date?.startsWith(detailRecordMonth.value));
+      }
+      return list;
+    });
+
+    const detailRecordMonths = computed(() => {
+      const months = new Set();
+      detailRecords.value.forEach(r => {
+        if (r.date && r.date.length >= 7) months.add(r.date.slice(0,7));
+      });
+      return [...months].sort().reverse();
+    });
+
+    const detailRenewals = computed(() => {
+      if (!detailStudent.value) return [];
+      return renewals.value
+        .filter(r => r.student_id === detailStudent.value.id)
+        .sort((a,b) => b.date.localeCompare(a.date));
+    });
+
+    const detailTotalSpent = computed(() => {
+      return detailEnrollments.value.reduce((sum, e) => sum + ((e.price||0)*(e.lessons||0)), 0)
+        + detailRenewals.value.reduce((sum, r) => sum + (r.amount||0), 0);
+    });
+
+    const detailTotalLessons = computed(() => {
+      return detailEnrollments.value.reduce((sum, e) => sum + (e.lessons||0) + (e.gift_lessons||0), 0);
+    });
+
+    const detailTotalRemaining = computed(() => {
+      return detailEnrollments.value.reduce((sum, e) => sum + detailRemaining(e.id), 0);
+    });
+
+    const detailTotalGiftLessons = computed(() => {
+      return detailEnrollments.value.reduce((sum, e) => sum + (e.gift_lessons||0), 0);
+    });
+
+    // 按课程细分统计（卡片内底部标签用）
+    const detailCourseBreakdown = computed(() => {
+      if (!detailStudent.value) return [];
+      const sid = detailStudent.value.id;
+      // 收集该学员所有报名过的课程类型（去重）
+      const courseTypeSet = new Set(detailEnrollments.value.map(e => e.course_type));
+      return [...courseTypeSet].map(ct => {
+        const ctEnrs = detailEnrollments.value.filter(e => e.course_type === ct);
+        // 签到次数：该课程类型下所有签到的记录数
+        const signinCount = records.value.filter(r =>
+          r.student_id === sid && ctEnrs.some(e => e.id === r.enrollment_id)
+        ).length;
+        // 缴费：报名费 + 续费
+        const enrSpent = ctEnrs.reduce((s, e) => s + ((e.price||0)*(e.lessons||0)), 0);
+        const renSpent = renewals.value.filter(r =>
+          r.student_id === sid && ctEnrs.some(e => e.id === r.enrollment_id)
+        ).reduce((s, r) => s + (r.amount||0), 0);
+        // 总课时（含赠课）
+        const lessons = ctEnrs.reduce((s, e) => s + (e.lessons||0) + (e.gift_lessons||0), 0);
+        // 剩余课时
+        const remaining = ctEnrs.reduce((s, e) => s + detailRemaining(e.id), 0);
+        // 赠课课时
+        const giftLessons = ctEnrs.reduce((s, e) => s + (e.gift_lessons||0), 0);
+        return {
+          course_type: ct,
+          name: getCourseNameById(ct),
+          color: getCourseColorById(ct),
+          signinCount, spent: enrSpent + renSpent,
+          lessons, remaining, giftLessons
+        };
+      }).sort((a,b) => b.spent - a.spent);
+    });
+
+    // ===== 报名和续费订单合并列表 =====
+    const detailOrders = computed(() => {
+      if (!detailStudent.value) return [];
+      const sid = detailStudent.value.id;
+      // 报名记录
+      const enrollOrders = enrollments.value
+        .filter(e => e.student_id === sid)
+        .map(e => {
+          // 计算已签到次数（正常+赠课）
+          const usedNormal = records.value.filter(r =>
+            r.enrollment_id === e.id && r.signin_type === 'normal'
+          ).length;
+          const usedGift = records.value.filter(r =>
+            r.enrollment_id === e.id && r.signin_type === 'gift'
+          ).length;
+          const totalL = (e.lessons||0) + (e.gift_lessons||0);
+          const remain = Math.max(0, (e.lessons||0) - usedNormal + (e.gift_lessons||0) - usedGift);
+          return {
+          uid: 'enr_'+e.id, id: e.id, type: 'enroll',
+          date: (e.created_at||'').slice(0,10) || '',
+          course_type: e.course_type,
+          lessons: e.lessons||0,
+          amount: e.total_fee || ((e.price||0)*(e.lessons||0)),
+          gift_lessons: e.gift_lessons||0,
+          raw: e,
+          totalLessons: totalL,
+          remaining: remain,
+          price: e.price || (e.lessons ? Math.round((e.total_fee||(e.price||0)*(e.lessons||0))/e.lessons) : 0),
+          status: e.status || 'active',
+          isRefunded: e.status === 'refunded',
+        }});
+      // 续费记录
+      const renewOrders = renewals.value
+        .filter(r => r.student_id === sid)
+        .map(r => ({
+          uid: 'ren_'+r.id, id: r.id, type: 'renew',
+          date: r.date||'',
+          course_type: r.course_type,
+          lessons: r.lessons||0,
+          amount: r.fee || r.amount || 0,
+          gift_lessons: r.gift_lessons||0,
+          raw: r,
+          totalLessons: r.lessons||0,
+          remaining: null,
+          price: (r.lessons&&r.lessons>0) ? Math.round((r.fee||r.amount||0)/r.lessons) : 0,
+        }));
+      // 合并并按日期倒序
+      return [...enrollOrders, ...renewOrders].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    });
+
+    // 报名续费记录月份筛选
+    const detailOrderMonths = computed(() => {
+      const months = new Set();
+      detailOrders.value.forEach(o => {
+        if (o.date && o.date.length >= 7) months.add(o.date.slice(0,7));
+      });
+      return [...months].sort().reverse();
+    });
+
+    const detailFilteredOrders = computed(() => {
+      let list = detailOrders.value;
+      if (detailOrderMonth.value) {
+        list = list.filter(o => o.date?.startsWith(detailOrderMonth.value));
+      }
+      return list;
+    });
+
+    function editDetailOrder(o){
+      if(o.type === 'enroll'){
+        openEnrollmentModal(detailStudent.value, o.raw);
+      } else {
+        openRenewEditModal(o.raw);
+      }
+    }
+
+    function deleteDetailOrder(o){
+      if(o.type === 'enroll'){
+        confirmDelete('enrollment', o.raw);
+      } else {
+        confirmDelete('renewal', o.raw);
+      }
+    }
+
+    // ===== 退费功能 =====
+    const showRefundModal = ref(false);
+    const refundingEnrollment = ref(null);
+    const refundForm = reactive({
+      total_fee: 0, total_lessons: 0, consumed_lessons: 0,
+      consumed_fee: 0, refund_lessons: 0, refund_fee: 0,
+      note: ''
+    });
+    // 退费详情弹窗
+    const viewingRefund = ref(null);
+    const showRefundDetailModal = ref(false);
+
+    // 计算已消耗金额（FIFO：按续费订单顺序逐节累加单价）
+    function calcConsumedFifoFee(enrollment, consumedCount) {
+      if (!enrollment || consumedCount <= 0) return 0;
+      // 按顺序获取续费订单
+      const renList = renewals.value
+        .filter(r => r.enrollment_id === enrollment.id)
+        .sort((a,b) => (a.date>b.date?1:(a.date<b.date?-1:0)));
+      let fee = 0;
+      let remaining = consumedCount;
+      for (const r of renList) {
+        if (remaining <= 0) break;
+        const use = Math.min(remaining, r.lessons || 0);
+        fee += use * (r.price || Math.round((r.fee || r.amount || 0) / (r.lessons || 1)));
+        remaining -= use;
+      }
+      // 超出所有续费的用初始报名单价
+      if (remaining > 0) {
+        fee += remaining * (enrollment.price || 0);
+      }
+      return Math.round(fee);
+    }
+
+    function openRefundModal(o) {
+      const enr = o.raw;
+      // 计算已消耗正常签到次数
+      const consumed = records.value.filter(r =>
+        r.enrollment_id === enr.id && r.signin_type === 'normal'
+      ).length;
+      const totalL = (enr.lessons || 0) + (enr.gift_lessons || 0);
+      const normalUsed = records.value.filter(r => r.enrollment_id === enr.id && r.signin_type === 'normal').length;
+      const giftUsed = records.value.filter(r => r.enrollment_id === enr.id && r.signin_type === 'gift').length;
+      const remain = Math.max(0, (enr.lessons || 0) - normalUsed + (enr.gift_lessons || 0) - giftUsed);
+      const consumedFee = calcConsumedFifoFee(enr, normalUsed);
+      const refundFee = (enr.total_fee || ((enr.price || 0) * (enr.lessons || 0))) - consumedFee;
+      refundingEnrollment.value = enr;
+      Object.assign(refundForm, {
+        total_fee: enr.total_fee || ((enr.price || 0) * (enr.lessons || 0)),
+        total_lessons: totalL,
+        consumed_lessons: consumed,
+        consumed_fee: consumedFee,
+        refund_lessons: remain,
+        refund_fee: Math.max(0, refundFee),
+        note: ''
+      });
+      showRefundModal.value = true;
+    }
+
+    async function saveRefund() {
+      const enr = refundingEnrollment.value;
+      if (!enr) return;
+      const refundId = genId();
+      const refundRow = {
+        id: refundId,
+        enrollment_id: enr.id,
+        user_id: uid(),
+        student_id: enr.student_id,
+        course_type: enr.course_type,
+        date: today(),
+        consumed_lessons: refundForm.consumed_lessons,
+        refund_lessons: refundForm.refund_lessons,
+        total_fee: refundForm.total_fee,
+        consumed_fee: refundForm.consumed_fee,
+        refund_fee: refundForm.refund_fee,
+        note: refundForm.note || '',
+      };
+      try {
+        // 1. 插入退款记录
+        const { error: e1 } = await sb.from('refunds').insert(refundRow);
+        if (e1) { toast('保存退款记录失败: ' + e1.message, 'error'); return; }
+        // 2. 更新 enrollment 状态
+        const { error: e2 } = await sb.from('enrollments').update({ status: 'refunded', remaining: 0 }).eq('id', enr.id);
+        if (e2) { toast('更新报名状态失败: ' + e2.message, 'error'); return; }
+        // 3. 刷新数据
+        await loadAllData();
+        toast('退费成功！');
+        showRefundModal.value = false;
+      } catch(err) {
+        toast('退费操作失败: ' + err.message, 'error');
+      }
+    }
+
+    async function viewRefundDetail(o) {
+      // 查找该报名关联的退款记录
+      try {
+        const { data, error } = await sb.from('refunds').select('*').eq('enrollment_id', o.id).order('created_at', { ascending: false }).limit(1);
+        if (error) { toast('查询退款详情失败: ' + error.message, 'error'); return; }
+        if (data && data.length > 0) {
+          viewingRefund.value = data[0];
+          showRefundDetailModal.value = true;
+        } else {
+          toast('未找到退款记录', 'error');
+        }
+      } catch(err) {
+        toast('查询退款详情失败: ' + err.message, 'error');
+      }
+    }
+
+    async function revokeRefund() {
+      const refd = viewingRefund.value;
+      if (!refd) return;
+      if (!confirm('确认撤回此次退费操作？撤回后课程将恢复为正常状态。')) return;
+      try {
+        // 1. 重新计算剩余课时
+        const normalUsed = records.value.filter(r => r.enrollment_id === refd.enrollment_id && r.signin_type === 'normal').length;
+        const giftUsed = records.value.filter(r => r.enrollment_id === refd.enrollment_id && r.signin_type === 'gift').length;
+        const enr = enrollments.value.find(e => e.id === refd.enrollment_id);
+        const totalLessons = (enr?.lessons||0) + (enr?.gift_lessons||0);
+        const newRemaining = Math.max(0, (enr?.lessons||0) - normalUsed + (enr?.gift_lessons||0) - giftUsed);
+        // 2. 删除退款记录
+        const { error: e1 } = await sb.from('refunds').delete().eq('id', refd.id);
+        if (e1) { toast('删除退款记录失败: ' + e1.message, 'error'); return; }
+        // 3. 恢复 enrollment 状态
+        const { error: e2 } = await sb.from('enrollments').update({ status: 'active', remaining: newRemaining }).eq('id', refd.enrollment_id);
+        if (e2) { toast('恢复报名状态失败: ' + e2.message, 'error'); return; }
+        // 4. 刷新
+        await loadAllData();
+        toast('退费已撤回！');
+        showRefundDetailModal.value = false;
+        viewingRefund.value = null;
+      } catch(err) {
+        toast('撤回失败: ' + err.message, 'error');
+      }
+    }
+
+
+    // ════════════════════════════════
+    //  课程报名 CRUD
+    // ════════════════════════════════
+    const showEnrollmentModal = ref(false);
+    const editingEnrollment = ref(null);
+    const enrollmentForm = reactive({
+      student_id:'', course_type:'', total_fee:0, lessons:0,
+      gift_lessons:0, start_date:'', active:true
+    });
+    const enrFilterCourse = ref('');
+    const enrFilterActive = ref('');
+    const filteredEnrollments = ref([]);
+
+    function openEnrollmentModal(s=null, e=null){
+      if(e){
+        editingEnrollment.value = e;
+        Object.assign(enrollmentForm,{
+          student_id:e.student_id, course_type:e.course_type,
+          total_fee:e.total_fee, lessons:e.lessons,
+          gift_lessons:e.gift_lessons||0, start_date:e.start_date||'', active:e.active!==false
+        });
+      } else {
+        editingEnrollment.value = null;
+        Object.assign(enrollmentForm,{
+          student_id:s?s.id:'', course_type:'', total_fee:0, lessons:0,
+          gift_lessons:0, start_date:'', active:true
+        });
+      }
+      showEnrollmentModal.value = true;
+    }
+
+    async function saveEnrollment(){
+      if(!enrollmentForm.course_type||!enrollmentForm.student_id){toast('课程和学生必填','error');return;}
+      const lessons = Number(enrollmentForm.lessons);
+      const totalFee = Number(enrollmentForm.total_fee);
+      if(isNaN(lessons)||isNaN(totalFee)){toast('课时和费用必须为数字','error');return;}
+      const price = lessons ? Math.round(totalFee/lessons) : 0;
+      const row = {
+        ...(editingEnrollment.value?{}:{id:genId()}),
+        student_id: enrollmentForm.student_id, user_id:uid(),
+        course_type: enrollmentForm.course_type,
+        total_fee: totalFee,
+        lessons: lessons,
+        remaining: lessons,
+        price:price,
+        gift_lessons: enrollmentForm.gift_lessons||0,
+        start_date: enrollmentForm.start_date||null,
+        active: enrollmentForm.active!==false,
+      };
+      try {
+        if(editingEnrollment.value){
+          delete row.id; delete row.student_id;
+          await sb.from('enrollments').update(row).eq('id',editingEnrollment.value.id);
+        } else {
+          const {error} = await sb.from('enrollments').insert([row]);
+          if(error) throw error;
+        }
+        toast(editingEnrollment.value?'修改成功':'报名成功');
+        showEnrollmentModal.value = false;
+        await loadAllData();
+      } catch(err){toast('保存失败:'+err.message,'error');}
+    }
+
+    function filterEnrollments(){
+      let list = enrollments.value;
+      if(enrFilterCourse.value) list=list.filter(e=>e.course_type===enrFilterCourse.value);
+      if(enrFilterActive.value!=='') {
+        const act=enrFilterActive.value==='true';
+        list=list.filter(e=>(e.active!==false)===act);
+      }
+      filteredEnrollments.value = list;
+    }
+    watch([enrollments, enrFilterCourse, enrFilterActive], filterEnrollments, {immediate:true});
+
+
+    // ════════════════════════════════
+    //  签到记录 CRUD
+    // ════════════════════════════════
+    const showSigninModal = ref(false);
+    const editingRecord = ref(null);
+    const signinForm = reactive({ student_id:'', enrollment_id:'', date:today(), time:'' });
+    const recFilterMonth = ref(currentMonth());
+    const recFilterStudent = ref('');
+    const recFilterCourse = ref('');
+    const filteredRecords = ref([]);
+
+    function openRecordEditModal(r=null){
+      if(r){
+        editingRecord.value = r;
+        Object.assign(signinForm,{
+          student_id:r.student_id, enrollment_id:r.enrollment_id,
+          date:r.date, time:r.time||''
+        });
+      } else {
+        editingRecord.value = null;
+        Object.assign(signinForm,{student_id:'', enrollment_id:'', date:today(), time:''});
+      }
+      showSigninModal.value = true;
+    }
+
+    async function saveSignin(){
+      if(!signinForm.enrollment_id||!signinForm.date){toast('请选择学生、课程和日期','error');return;}
+      try {
+        if(editingRecord.value){
+          await sb.from('records').update({
+            date:signinForm.date, time:signinForm.time.trim()
+          }).eq('id', editingRecord.value.id);
+          toast('修改成功');
+        } else {
+          const {error} = await sb.from('records').insert([{
+            id:genId(), student_id:signinForm.student_id,
+            enrollment_id:signinForm.enrollment_id, user_id:uid(),
+            date:signinForm.date, time:signinForm.time.trim()
+          }]);
+          if(error) throw error;
+
+          // 自动扣减 remaining
+          const enr = findEnrollment(signinForm.enrollment_id);
+          if(enr && enr.remaining>0){
+            await sb.from('enrollments').update({remaining:enr.remaining-1}).eq('id',enr.id);
+          }
+          toast('签到成功');
+        }
+        showSigninModal.value = false;
+        await loadAllData();
+      } catch(err){toast('操作失败:'+err.message,'error');}
+    }
+
+    async function loadRecords(){ filterRecords(); }
+    function filterRecords(){
+      let list = records.value;
+      if(recFilterMonth.value) list=list.filter(r=>r.date.startsWith(recFilterMonth.value));
+      if(recFilterStudent.value) list=list.filter(r=>r.student_id===recFilterStudent.value);
+      if(recFilterCourse.value) list=list.filter(r=>{
+        const e=findEnrollment(r.enrollment_id);
+        return e&&e.course_type===recFilterCourse.value;
+      });
+      list.sort((a,b)=>b.date.localeCompare(a.date));
+      filteredRecords.value = list;
+    }
+    watch([records, recFilterMonth, recFilterStudent, recFilterCourse], filterRecords, {immediate:true});
+
+    // 删除签到时恢复 remaining
+    async function restoreRemainingOnDelete(record){
+      if(!record||!record.enrollment_id) return;
+      const enr=findEnrollment(record.enrollment_id);
+      if(enr){
+        await sb.from('enrollments').update({remaining:(enr.remaining||0)+1}).eq('id',enr.id);
+      }
+    }
+
+
+    // ════════════════════════════════
+    //  续费记录 CRUD
+    // ════════════════════════════════
+    const showRenewModal = ref(false);
+    const editingRenewal = ref(null);
+    const enrollingFor = ref(null); // 续费时的目标 enrollment 对象
+    const renewForm = reactive({ date:today(), fee:0, lessons:0, gift_lessons:0, price:0, note:'' });
+    const renFilterStudent = ref('');
+    const filteredRenewals = ref([]);
+
+    function openRenewModal(enr){
+      enrollingFor.value = enr;
+      editingRenewal.value = null;
+      Object.assign(renewForm,{date:today(),fee:0,lessons:0,gift_lessons:0,price:0,note:''});
+      showRenewModal.value=true;
+    }
+
+    function openRenewEditModal(r){
+      editingRenewal.value=r;
+      Object.assign(renewForm,{
+        date:r.date||today(), fee:r.fee||0, lessons:r.lessons||0,
+        gift_lessons:r.gift_lessons||0, price:r.price||0, note:r.note||''
+      });
+      showRenewModal.value=true;
+    }
+
+    async function saveRenew(){
+      if(!renewForm.fee||!renewForm.lessons){toast('金额和课时必填','error');return;}
+      const finalPrice = renewForm.price||Math.round(renewForm.fee/renewForm.lessons);
+
+      try {
+        if(editingRenewal.value){
+          await sb.from('renew_records').update({
+            date:renewForm.date, fee:renewForm.fee,
+            lessons:renewForm.lessons, gift_lessons:renewForm.gift_lessons||0,
+            price:finalPrice, note:renewForm.note.trim()
+          }).eq('id', editingRenewal.value.id);
+          toast('修改成功');
+        } else {
+          const targetEnr=enrollingFor.value;
+          const {error}=await sb.from('renew_records').insert([{
+            id:genId(), enrollment_id:targetEnr.id, user_id:uid(),
+            date:renewForm.date, fee:renewForm.fee,
+            lessons:renewForm.lessons, gift_lessons:renewForm.gift_lessons||0,
+            price:finalPrice, note:renewForm.note.trim()
+          }]);
+          if(error)throw error;
+
+          // 更新报名的 remaining 和 lessons
+          const newLessons=(targetEnr.lessons||0)+renewForm.lessons+(renewForm.gift_lessons||0);
+          const newRemaining=(targetEnr.remaining||0)+renewForm.lessons+(renewForm.gift_lessons||0);
+          await sb.from('enrollments').update({lessons:newLessons,remaining:newRemaining}).eq('id',targetEnr.id);
+          toast('续费成功 +'+renewForm.lessons+'节');
+        }
+        showRenewModal.value=false;
+        await loadAllData();
+      } catch(err){toast('操作失败:'+err.message,'error');}
+    }
+
+    // 删除续费时扣减 remaining
+    async function adjustRemainingOnRenewDelete(renewal){
+      if(!renewal||!renewal.enrollment_id)return;
+      const enr=findEnrollment(renewal.enrollment_id);
+      if(enr){
+        const deduct=renewal.lessons+(renewal.gift_lessons||0);
+        await sb.from('enrollments').update({
+          lessons:Math.max(0,(enr.lessons||0)-deduct),
+          remaining:Math.max(0,(enr.remaining||0)-deduct)
+        }).eq('id',enr.id);
+      }
+    }
+
+    function filterRenewals(){
+      let list=[...renewals.value].sort((a,b)=>b.date.localeCompare(a.date));
+      if(renFilterStudent.value){
+        const stuIds=new Set(
+          enrollments.value.filter(e=>e.student_id===renFilterStudent.value).map(e=>e.id)
+        );
+        list=list.filter(r=>stuIds.has(r.enrollment_id));
+      }
+      filteredRenewals.value=list;
+    }
+    watch([renewals, renFilterStudent], filterRenewals, {immediate:true});
+
+
+    // ════════════════════════════════
+    //  月度汇总 & 耗课统计
+    // ════════════════════════════════
+    const summaryMonth = ref(currentMonth());
+    const feeDetailMonth = ref(currentMonth());
+    const summaryStats = reactive({
+      totalIncome:0, totalConsumed:0, totalLessons:0, uniqueStudents:0,
+      byCourse:[], detail:[],
+    });
+
+    function calcSummary(){
+      const m=summaryMonth.value;
+      const recs=records.value.filter(r=>r.date.startsWith(m));
+
+      // 按课程分组
+      const byCourseMap={};
+      const detailMap={};
+      const studentSet=new Set();
+
+      recs.forEach(r=>{
+        const e=findEnrollment(r.enrollment_id);
+        if(!e)return;
+        const ct=e.course_type;
+        const c=findCourse(ct);
+        const cname=c?.name??ct;
+        const cc=c?.color??'#666';
+
+        // byCourse
+        if(!byCourseMap[ct])byCourseMap[ct]={courseType:ct,name:cname,color:cc,count:0,income:0,consumedAmount:0,students:new Set()};
+        byCourseMap[ct].count++;
+        const fifoPrice=calcFifoPriceForRecord(r);
+        byCourseMap[ct].consumedAmount+=fifoPrice;
+        byCourseMap[ct].students.add(r.student_id);
+
+        // detail
+        const key=r.student_id+'_'+ct;
+        if(!detailMap[key]){
+          detailMap[key]={studentId:r.student_id,name:getStudentName(r.student_id),courseType:ct,courseName:cname,color:cc,count:0,consumedAmount:0};
+        }
+        detailMap[key].count++;
+        detailMap[key].consumedAmount+=fifoPrice;
+
+        studentSet.add(r.student_id);
+      });
+
+      // 教练课时费收入（使用按月配置）
+      let totalIncome=0;
+      const cfgMap = {};
+      coachFeeConfigs.value.filter(c => c.month === m).forEach(c => { cfgMap[c.course_type] = c; });
+      recs.forEach(r=>{
+        const e=findEnrollment(r.enrollment_id);
+        if(!e)return;
+        const ct=e.course_type;
+        const cfg=cfgMap[ct];
+        let fee=0;
+        if(cfg&&cfg.value){
+          if(cfg.mode==='percent'){
+            fee=Math.round(calcFifoPriceForRecord(r) * cfg.value / 100);
+          } else {
+            fee=cfg.value;
+          }
+        }
+        totalIncome+=fee;
+        if(byCourseMap[ct])byCourseMap[ct].income+=fee;
+      });
+
+      summaryStats.totalIncome=totalIncome;
+      summaryStats.totalConsumed=Object.values(detailMap).reduce((s,d)=>s+d.consumedAmount,0);
+      summaryStats.totalLessons=recs.length;
+      summaryStats.uniqueStudents=studentSet.size;
+      summaryStats.byCourse=Object.values(byCourseMap).map(b=>({...b,students:b.students.size,avgPrice:b.count>0?Math.round(b.consumedAmount/b.count):0}));
+      summaryStats.detail=Object.values(detailMap).sort((a,b)=>b.consumedAmount-a.consumedAmount).map(d=>({...d,avgPrice:d.count>0?Math.round(d.consumedAmount/d.count):0}));
+    }
+
+    watch(summaryMonth, calcSummary, {immediate:true});
+    watch([records, enrollments, courses, coachFeeSettings, coachFeeConfigs, renewals], ()=>{ if(currentPage.value==='monthly') calcSummary(); }, {deep:true});
+    watch(currentPage, ()=>{ if(currentPage.value==='monthly') nextTick(calcSummary); });
+
+
+    // ════════════════════════════════
+    //  课程管理 CRUD
+    // ════════════════════════════════
+    const showCourseModal = ref(false);
+    const editingCourse = ref(null);
+    const courseForm = reactive({ id:'', name:'', color:'#0ea5e9', settlement_type:'auto' });
+
+    function openCourseModal(c=null){
+      if(c){
+        editingCourse.value=c;
+        Object.assign(courseForm,{id:c.id,name:c.name,color:c.color||'#0ea5e9',settlement_type:c.settlement_type||'auto'});
+      } else {
+        editingCourse.value=null;
+        Object.assign(courseForm,{id:'',name:'',color:'#0ea5e9',settlement_type:'auto'});
+      }
+      showCourseModal.value=true;
+    }
+
+    async function saveCourse(){
+      const nm = courseForm.name.trim();
+      if(!nm){ toast('请填写课程名称','error'); return; }
+      try {
+        if(editingCourse.value){
+          await sb.from('courses').update({
+            name:nm, color:courseForm.color, settlement_type:courseForm.settlement_type
+          }).eq('id',editingCourse.value.id);
+          toast('修改成功');
+        } else {
+          const newId = 'c_' + Date.now().toString(36) + Math.random().toString(36).substr(2,4);
+          const {error} = await sb.from('courses').insert([{
+            id:newId, user_id:uid(), name:nm, color:courseForm.color, settlement_type:courseForm.settlement_type
+          }]);
+          if(error) throw error;
+          toast('创建成功');
+        }
+        showCourseModal.value=false;
+        await loadAllData();
+      } catch(err){toast('保存失败:'+err.message,'error');}
+    }
+
+
+    // ════════════════════════════════
+    //  出勤奖励
+    // ════════════════════════════════
+    const showAwardModal = ref(false);
+    const editingAward = ref(null);
+    const awardFormTiers = ref([]);
+    const awardTab = ref('courses');
+
+    // 参与出勤奖励的课程（award_enabled=true，自动关联规则）
+    const awardEnabledCourses = computed(() =>
+      activeCourses.value
+        .filter(c => c.award_enabled)
+        .sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+        .map(c => ({
+          ...c,
+          _rule: awardRules.value.find(r => r.course_name === c.name) || null
+        }))
+    );
+
+    function openAwardRuleModal(rule){
+      if (rule) {
+        editingAward.value = rule;
+        awardFormTiers.value = rule.tiers ? JSON.parse(JSON.stringify(rule.tiers)) : [];
+      } else {
+        editingAward.value = null;
+        awardFormTiers.value = [];
+      }
+      showAwardModal.value = true;
+    }
+
+    async function toggleAwardRule(rule){
+      try {
+        await sb.from('award_rules').update({enabled:!rule.enabled}).eq('id',rule.id);
+        toast(rule.enabled?'已禁用':'已启用');
+        await loadAllData();
+      } catch(err){toast('操作失败:'+err.message,'error');}
+    }
+
+    async function saveAwardRule(){
+      try {
+        await sb.from('award_rules').update({tiers:awardFormTiers.value}).eq('id',editingAward.value.id);
+        toast('规则已保存');
+        showAwardModal.value=false;
+        await loadAllData();
+      } catch(err){toast('保存失败:'+err.message,'error');}
+    }
+
+    // 切换课程参与奖励开关
+    async function toggleAwardEnabled(course){
+      const newVal = !course.award_enabled;
+      // 乐观更新
+      course.award_enabled = newVal;
+      try {
+        await sb.from('courses').update({award_enabled: newVal}).eq('id', course.id).eq('user_id', uid());
+        toast(newVal ? '已开启「'+course.name+'」出勤奖励' : '已关闭「'+course.name+'」出勤奖励', 'success');
+      } catch(err){
+        // 回滚
+        course.award_enabled = !newVal;
+        toast('操作失败:'+err.message,'error');
+      }
+    }
+
+    // 为课程创建奖励规则
+    async function createAwardRule(course){
+      try {
+        const newRule = {
+          id: genId(),
+          user_id: uid(),
+          course_id: course.id,
+          course_name: course.name,
+          enabled: true,
+          tiers: [{ count: 4, reward: 20 }, { count: 8, reward: 50 }],
+          created_at: new Date().toISOString()
+        };
+        const { error: insertErr } = await sb.from('award_rules').insert(newRule);
+        if (insertErr) throw insertErr;
+        toast('已为「'+course.name+'」创建奖励规则', 'success');
+        // 直接进入编辑视图
+        editingAward.value = newRule;
+        awardFormTiers.value = JSON.parse(JSON.stringify(newRule.tiers));
+        awardRules.value.push(newRule);
+      } catch(err){
+        console.error('createAwardRule error:', err);
+        toast('创建失败: ' + (err.message || JSON.stringify(err)), 'error');
+      }
+    }
+
+
+    // ════════════════════════════════
+    //  课时费设置（新：按月配置 + 分组明细）
+    // ════════════════════════════════
+    function getFeeCfgForCourse(courseType){
+      const cfg = feeConfigsForMonth.value.find(c => c.course_type === courseType);
+      return cfg || { course_type: courseType, month: feeDetailMonth.value, mode: 'fixed', value: 0, locked: false };
+    }
+
+    async function saveFeeConfig(courseType, field, val){
+      // 从原始数组找，直接修改以实现即时响应
+      const cfgList = coachFeeConfigs.value;
+      const existing = cfgList.find(c => c.course_type === courseType && c.month === feeDetailMonth.value);
+      if (existing && existing.locked) return;
+      let newCfg = null;
+      // ★ 先更新本地数组，Vue 即时响应
+      if (existing) {
+        existing[field] = val;
+      } else {
+        newCfg = {
+          id: genId(), user_id: uid(), month: feeDetailMonth.value,
+          course_type: courseType, mode: 'fixed', value: 0, locked: false,
+        };
+        newCfg[field] = val;
+        cfgList.push(newCfg);
+      }
+      // 后台同步数据库
+      try {
+        if (existing) {
+          await sb.from('coach_fee_configs').update({ [field]: val }).eq('id', existing.id);
+        } else {
+          const insert = {
+            id: newCfg.id, user_id: uid(), month: feeDetailMonth.value,
+            course_type: courseType, mode: 'fixed', value: 0, locked: false,
+          };
+          insert[field] = val;
+          await sb.from('coach_fee_configs').insert([insert]);
+        }
+        await loadAllData();
+      } catch(err) { console.warn('保存课时费配置出错:', err); }
+    }
+
+    async function lockAllFees(){
+      const configs = feeConfigsForMonth.value.filter(c => !c.locked);
+      if (!configs.length) return;
+      // ★ 先更新本地数组，Vue 即时响应
+      configs.forEach(c => { c.locked = true; });
+      // 后台同步数据库
+      try {
+        for (const c of configs) {
+          await sb.from('coach_fee_configs').update({ locked: true }).eq('id', c.id);
+        }
+        toast('本月课时费设置已锁定');
+        await loadAllData();
+      } catch(err) { console.warn('锁定课时费出错:', err); }
+    }
+
+    async function unlockAllFees(){
+      const configs = feeConfigsForMonth.value.filter(c => c.locked);
+      if (!configs.length) return;
+      // ★ 先更新本地数组，Vue 即时响应
+      configs.forEach(c => { c.locked = false; });
+      // 后台同步数据库
+      try {
+        for (const c of configs) {
+          await sb.from('coach_fee_configs').update({ locked: false }).eq('id', c.id);
+        }
+        toast('已撤回锁定，可重新编辑');
+        await loadAllData();
+      } catch(err) { console.warn('解锁课时费出错:', err); }
+    }
+
+    // 旧版课时费设置（feesettings 页面保留兼容）
+    function getCoachFee(courseType){
+      const fs=coachFeeSettings.value.find(f=>f.course_type===courseType);
+      return fs?fs.fee:0;
+    }
+
+    async function saveCoachFee(courseType,val){
+      const num=parseInt(val)||0;
+      const existing=coachFeeSettings.value.find(f=>f.course_type===courseType);
+      let newId=null;
+      // ★ 先更新本地数组，Vue 即时响应
+      if(existing){
+        if(num<=0){
+          const idx = coachFeeSettings.value.indexOf(existing);
+          if(idx>=0) coachFeeSettings.value.splice(idx,1);
+        } else {
+          existing.fee = num;
+        }
+      } else if(num>0){
+        newId=genId();
+        coachFeeSettings.value.push({id:newId,user_id:uid(),course_type:courseType,fee:num});
+      }
+      // 后台同步数据库
+      try {
+        if(existing){
+          if(num<=0){
+            await sb.from('coach_fee_settings').delete().eq('id',existing.id);
+          } else {
+            await sb.from('coach_fee_settings').update({fee:num}).eq('id',existing.id);
+          }
+        } else if(num>0){
+          await sb.from('coach_fee_settings').insert([{id:newId,user_id:uid(),course_type:courseType,fee:num}]);
+        }
+        await loadAllData();
+      } catch(err){console.warn('保存课时费出错:',err);}
+    }
+
+
+    // ════════════════════════════════
+    //  通用删除
+    // ════════════════════════════════
+    const deleteConfirm = reactive({ show:false, type:'', item:null, message:'' });
+
+    function confirmDelete(type, item){
+      const names = {
+        student:`确定删除学生「${item.name}」？其所有报名、签到、续费记录将一并删除。`,
+        enrollment:`确定删除这条「${getCourseNameById(item.course_type)}」报名？关联的续费记录也将被删除。`,
+        record:`确定删除 ${item.date} 的签到记录？`,
+        renewal:`确定删除该条续费记录？`,
+        course:`确定删除课程「${item.name}」？删除后不可恢复！`,
+      };
+      deleteConfirm.type=type; deleteConfirm.item=item;
+      deleteConfirm.message=names[type]||'确定删除？';
+      deleteConfirm.show=true;
+    }
+
+    async function executeDelete(){
+      const {type,item}=deleteConfirm;
+      deleteConfirm.show=false;
+      try {
+        switch(type){
+          case'student': {
+            // 级联删除：先删关联的续费→签到→报名，最后删学生
+            const { data: studentEnrollments } = await sb.from('enrollments').select('id').eq('student_id', item.id);
+            const enrollmentIds = studentEnrollments?.map(e => e.id) || [];
+            if (enrollmentIds.length > 0) {
+              await sb.from('renew_records').delete().in('enrollment_id', enrollmentIds);
+            }
+            await sb.from('records').delete().eq('student_id', item.id);
+            await sb.from('enrollments').delete().eq('student_id', item.id);
+            await sb.from('students').delete().eq('id', item.id);
+            toast('学生及其所有记录已删除');
+            break;
+          }
+          case'enrollment': {
+            // 级联删除：先删关联的续费和签到，最后删报名
+            await sb.from('renew_records').delete().eq('enrollment_id', item.id);
+            await sb.from('records').delete().eq('enrollment_id', item.id);
+            await sb.from('enrollments').delete().eq('id', item.id);
+            toast('报名及关联记录已删除');
+            break;
+          }
+          case'record':
+            await restoreRemainingOnDelete(item);
+            await sb.from('records').delete().eq('id',item.id);
+            toast('签到已删除'); break;
+          case'renewal':
+            await adjustRemainingOnRenewDelete(item);
+            await sb.from('renew_records').delete().eq('id',item.id);
+            toast('续费已删除'); break;
+          case'course':
+            // 乐观更新：先本地标记删除，UI即时响应
+            const courseIdx = courses.value.findIndex(c => c.id === item.id);
+            if (courseIdx !== -1) {
+              courses.value[courseIdx] = { ...courses.value[courseIdx], deleted: true };
+            }
+            try {
+              await sb.from('courses').update({deleted:true}).eq('id',item.id);
+            } catch (e) {
+              // 回滚乐观更新
+              if (courseIdx !== -1) {
+                courses.value[courseIdx] = { ...courses.value[courseIdx], deleted: false };
+              }
+              throw e;
+            }
+            toast('课程已删除'); break;
+        }
+        await loadAllData();
+      } catch(err){toast('删除失败:'+err.message,'error');}
+    }
+
+
+    // ════════════════════════════════
+    //  生命周期
+    // ════════════════════════════════
+    onMounted(() => {
+      checkSession();
+      // 默认选中当前月
+      recFilterMonth.value=currentMonth();
+      summaryMonth.value=currentMonth();
+    });
+
+    // 返回模板使用的变量和方法
+    return {
+      // 认证
+      authState, authForm, regForm, authLoading, handleLogin, handleRegister, handleLogout,
+      // 数据
+      students, enrollments, records, renewals, courses, awardRules, coachFeeSettings,
+      activeCourses,
+      // 导航
+      currentPage, menuItems,
+      // Toast
+      toasts, removeToast, toast,
+      // 辅助函数
+      findStudent, findEnrollment, findCourse,
+      getStudentName, getStudentNameByEnrollment,
+      getCourseName, getCourseColor,
+      getCourseNameById, getCourseColorById, isPresetCourse, getPriceByEnrollmentId,
+      getEnrollmentsOfStudent, getDistinctEnrollmentsOfStudent,
+      getSigninPrice, calcFifoPriceForRecord,
+      // 仪表盘
+      dashStats, todaySigninList, todaySigninByCourse, todaySigninDateLabel, monthAwardList, monthNotQualifyingList,
+      filteredAwardList, filteredNotQualifyingList, awardQualifiedFilter, awardNotQualifyingFilter, awardCourseOptions, dashCourseStats,
+      headerDate, todayStr, currentYear,
+      syncing, syncData,
+      // 签到页面
+      signinDate, showSigninDatePicker, signinDateLabel,
+      signinViewMode, signinMonthOptions, monthSigninDays, goToSigninDay,
+      signinCourseCards,
+      signinModalOpen, signinModalCourse, signinSearch, signinSelectedIds, signinTypeSelections,
+      signinModalStudents, signinModalTotal, signinIsAllSelected,
+      openSigninModal, closeSigninModal,
+      toggleSigninSelect, signinIsSelected, signinToggleAll,
+      highlightName, quickSignin, batchSignin,
+      todaySigninSelectedIds, toggleTodaySigninSelect, toggleCourseSelect, courseAllSelected,
+      batchEditSigninDate, batchDeleteSignin,
+      // 学生 CRUD
+      showStudentModal, editingStudent, studentForm, openStudentModal, saveStudent,
+      stuSearchText, stuFilterCourse, filteredStudents,
+      // 学员详情
+      detailStudent, detailRecordMonth, showStudentDetail, formatTime,
+      detailRemaining, detailEnrollments, detailCourseTypeCount, detailRecords, detailFilteredRecords,
+      detailRecordMonths, detailRenewals, detailTotalSpent, detailTotalLessons, detailTotalRemaining, detailTotalGiftLessons, detailCourseBreakdown,
+      detailOrders, detailFilteredOrders, detailOrderMonths, detailOrderMonth, editDetailOrder, deleteDetailOrder,
+      // 退费
+      showRefundModal, refundingEnrollment, refundForm, openRefundModal, saveRefund, viewRefundDetail, revokeRefund,
+      showRefundDetailModal, viewingRefund,
+      // 报名 CRUD
+      showEnrollmentModal, editingEnrollment, enrollmentForm, openEnrollmentModal, saveEnrollment,
+      enrFilterCourse, enrFilterActive, filteredEnrollments,
+      // 签到 CRUD
+      showSigninModal, editingRecord, signinForm, openRecordEditModal, saveSignin,
+      recFilterMonth, recFilterStudent, recFilterCourse, filteredRecords,
+      // 续费 CRUD
+      showRenewModal, editingRenewal, enrollingFor, renewForm, openRenewModal, openRenewEditModal, saveRenew,
+      renFilterStudent, filteredRenewals,
+      // 月度汇总
+      summaryMonth, summaryStats, calcSummary,
+      feeDetailMonth, feeDetailByCourse, feeDetailTotal, feeCourseMap, feeConfigsForMonth,
+      giftDetail, giftDetailTotal, updateGiftFee, giftFeeLocked, lockGiftFees, unlockGiftFees,
+      // 手动结算课程
+      manualSettlementSettings, manualSettlementLocked, manualCourseTypes, manualCourseDetails, manualCourseTotal,
+      updateManualFee, lockManualCourse, unlockManualCourse,
+      getFeeCfgForCourse, saveFeeConfig, lockAllFees, unlockAllFees,
+      // 课程 CRUD
+      showCourseModal, editingCourse, courseForm, openCourseModal, saveCourse,
+      // 出勤奖励
+      showAwardModal, editingAward, awardFormTiers, awardTab, awardEnabledCourses, openAwardRuleModal, toggleAwardRule, saveAwardRule, toggleAwardEnabled, createAwardRule,
+      // 课时费
+      getCoachFee, saveCoachFee,
+      // 删除
+      deleteConfirm, confirmDelete, executeDelete,
+      // 工具函数（模板中调用）
+      today, currentMonth,
+    };
+  }
+}).mount('#app');
+
+</script>
+</body>
+</html>
